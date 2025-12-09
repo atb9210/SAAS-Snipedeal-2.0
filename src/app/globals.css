@@ -1,0 +1,252 @@
+/* globals.css - Stili globali SnipeDeal 2.0 PWA */
+/* Tema vivace rosso stile Duolingo */
+/* Timestamp: 2024-12-09 */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 1 77% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 14 100% 63%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 33 100% 94%;
+    --accent-foreground: 24 100% 45%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 1 77% 55%;
+    --radius: 12px;
+
+    /* Custom properties */
+    --header-height: 64px;
+    --bottom-nav-height: 72px;
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  }
+
+  /* Supporto PWA - Safe Areas iOS */
+  @supports (padding: env(safe-area-inset-bottom)) {
+    body {
+      padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));
+    }
+  }
+}
+
+@layer components {
+  /* Card Component */
+  .card {
+    @apply bg-card rounded-xl shadow-card p-4 transition-shadow duration-200;
+  }
+
+  .card:hover {
+    @apply shadow-card-hover;
+  }
+
+  /* Floating Action Button */
+  .fab {
+    @apply fixed bottom-24 right-4 z-50 w-14 h-14 rounded-full bg-primary text-white 
+           flex items-center justify-center shadow-fab transition-transform duration-200
+           active:scale-95 hover:scale-105;
+  }
+
+  /* Bottom Navigation */
+  .bottom-nav {
+    @apply fixed bottom-0 left-0 right-0 bg-white border-t border-border
+           flex items-center justify-around h-[72px] z-40;
+    padding-bottom: var(--safe-area-bottom);
+  }
+
+  .bottom-nav-item {
+    @apply flex flex-col items-center justify-center py-2 px-4 transition-colors duration-200 relative;
+  }
+
+  .bottom-nav-item.active {
+    @apply text-primary;
+  }
+
+  .bottom-nav-item:not(.active) {
+    @apply text-muted-foreground;
+  }
+
+  /* Button Variants */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg font-medium 
+           transition-all duration-200 focus:outline-none focus:ring-2 
+           focus:ring-ring focus:ring-offset-2 disabled:opacity-50 
+           disabled:pointer-events-none active:scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply btn bg-primary text-primary-foreground hover:bg-primary-700 shadow-button;
+  }
+
+  .btn-secondary {
+    @apply btn bg-secondary text-secondary-foreground hover:bg-secondary-600;
+  }
+
+  .btn-outline {
+    @apply btn border-2 border-primary text-primary hover:bg-primary hover:text-white;
+  }
+
+  .btn-ghost {
+    @apply btn text-foreground hover:bg-muted;
+  }
+
+  .btn-lg {
+    @apply h-12 px-6 text-base;
+  }
+
+  .btn-md {
+    @apply h-10 px-4 text-sm;
+  }
+
+  .btn-sm {
+    @apply h-8 px-3 text-xs;
+  }
+
+  /* Input Styles */
+  .input {
+    @apply w-full h-12 px-4 rounded-lg border border-input bg-white
+           text-foreground placeholder:text-muted-foreground
+           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+           transition-all duration-200;
+  }
+
+  /* Badge Styles */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply badge bg-primary-100 text-primary-700;
+  }
+
+  .badge-success {
+    @apply badge bg-success-100 text-success-700;
+  }
+
+  .badge-warning {
+    @apply badge bg-warning-100 text-warning-700;
+  }
+
+  /* Pull to Refresh indicator */
+  .pull-indicator {
+    @apply absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full
+           flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-card;
+  }
+
+  /* Swipe Action */
+  .swipe-action {
+    @apply absolute inset-y-0 flex items-center justify-center px-4;
+  }
+
+  .swipe-action-delete {
+    @apply swipe-action right-0 bg-danger text-white;
+  }
+
+  .swipe-action-edit {
+    @apply swipe-action left-0 bg-primary text-white;
+  }
+
+  /* Loading Spinner */
+  .spinner {
+    @apply w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin;
+  }
+
+  /* Empty State */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 px-4 text-center;
+  }
+
+  .empty-state-icon {
+    @apply w-16 h-16 text-muted-foreground mb-4;
+  }
+
+  .empty-state-title {
+    @apply text-lg font-semibold text-foreground mb-2;
+  }
+
+  .empty-state-description {
+    @apply text-sm text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  /* Safe area utilities */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Text gradient */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-white/80 backdrop-blur-md;
+  }
+}
+
+/* PWA Install Banner */
+.pwa-install-banner {
+  @apply fixed bottom-20 left-4 right-4 bg-white rounded-xl shadow-lg p-4 z-50
+         flex items-center gap-4 animate-slide-up;
+}
+
+/* Animations for page transitions */
+.page-enter {
+  @apply opacity-0 translate-y-4;
+}
+
+.page-enter-active {
+  @apply opacity-100 translate-y-0 transition-all duration-300;
+}
+
+.page-exit {
+  @apply opacity-100 translate-y-0;
+}
+
+.page-exit-active {
+  @apply opacity-0 -translate-y-4 transition-all duration-200;
+}
+

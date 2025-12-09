@@ -1,0 +1,103 @@
+# docker-compose.yml - SnipeDeal 2.0 PWA
+# Stack: Next.js + MySQL + Redis
+# Timestamp: 2024-12-09
+
+version: '3.8'
+
+services:
+  # Applicazione Next.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: snipedeal-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret@mysql:3306/snipedeal
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your-super-secret-key-change-in-production
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - snipedeal-network
+
+  # Database MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: snipedeal-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: snipedeal
+      MYSQL_USER: snipedeal
+      MYSQL_PASSWORD: snipedeal_secret
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_secret"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - snipedeal-network
+
+  # Redis per BullMQ (job queue)
+  redis:
+    image: redis:7-alpine
+    container_name: snipedeal-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - snipedeal-network
+
+  # Worker per job di scraping
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: snipedeal-worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret@mysql:3306/snipedeal
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - snipedeal-network
+
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  snipedeal-network:
+    driver: bridge
+
+

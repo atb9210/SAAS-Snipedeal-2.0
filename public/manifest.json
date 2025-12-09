@@ -1,0 +1,43 @@
+{
+  "name": "SnipeDeal - Trova Affari sui Marketplace",
+  "short_name": "SnipeDeal",
+  "description": "Monitora automaticamente Subito, eBay, Vinted e altri marketplace. Ricevi notifiche istantanee sui migliori affari.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#FAFAFA",
+  "theme_color": "#E53935",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "it",
+  "categories": ["shopping", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuova Campagna",
+      "short_name": "Nuova",
+      "description": "Crea una nuova campagna di monitoraggio",
+      "url": "/campaigns/new"
+    },
+    {
+      "name": "Le Mie Campagne",
+      "short_name": "Campagne",
+      "description": "Visualizza le tue campagne attive",
+      "url": "/campaigns"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
