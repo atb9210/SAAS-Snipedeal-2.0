@@ -1,6 +1,6 @@
 # Dockerfile - SnipeDeal 2.0 PWA
 # Multi-stage build per Next.js con Playwright
-# Ottimizzato per Dokploy Production
+# MIGRAZIONI AUTOMATICHE all'avvio!
 # Timestamp: 2024-12-09
 
 # ============================================
@@ -8,7 +8,6 @@
 # ============================================
 FROM node:20-slim AS base
 
-# Installa dipendenze sistema per Playwright e Prisma
 RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
@@ -30,10 +29,6 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libcairo2 \
     fonts-liberation \
-    libappindicator3-1 \
-    libu2f-udev \
-    libvulkan1 \
-    xdg-utils \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -52,14 +47,10 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 
-# Copia dipendenze
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Genera Prisma client
 RUN npx prisma generate
-
-# Build Next.js (standalone)
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -72,14 +63,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Crea utente non-root per sicurezza
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copia file pubblici
 COPY --from=builder /app/public ./public
 
-# Imposta permessi per cartella .next
+# Crea cartella .next
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
 
@@ -87,20 +77,25 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copia Prisma schema e client generato
+# Copia Prisma per migrazioni automatiche
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
-# Installa Playwright browser (Chromium) per scraping
+# Copia entrypoint per migrazioni automatiche
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+# Installa Playwright
 RUN npx playwright install chromium --with-deps
 
 USER nextjs
 
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Avvia server Next.js standalone
+# Entrypoint esegue migrazioni poi avvia l'app
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]

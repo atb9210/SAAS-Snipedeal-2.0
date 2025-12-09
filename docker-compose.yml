@@ -1,6 +1,6 @@
 # docker-compose.yml - SnipeDeal 2.0 PWA
 # Stack: Next.js + MySQL + Redis + Worker
-# Ottimizzato per Dokploy Production
+# DEPLOYMENT AUTOMATICO - Zero configurazione manuale
 # Timestamp: 2024-12-09
 
 services:
@@ -11,10 +11,10 @@ services:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-snipedeal_root_2024}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-snipedeal}
-      MYSQL_USER: ${MYSQL_USER:-snipedeal}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-snipedeal_secret_2024}
+      MYSQL_ROOT_PASSWORD: snipedeal_root_2024
+      MYSQL_DATABASE: snipedeal
+      MYSQL_USER: snipedeal
+      MYSQL_PASSWORD: snipedeal_secret_2024
     volumes:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -46,6 +46,7 @@ services:
 
   # ============================================
   # APP NEXT.JS (Frontend + API)
+  # Migrazioni e seed AUTOMATICI all'avvio!
   # ============================================
   app:
     build:
@@ -56,10 +57,10 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=mysql://${MYSQL_USER:-snipedeal}:${MYSQL_PASSWORD:-snipedeal_secret_2024}@mysql:3306/${MYSQL_DATABASE:-snipedeal}
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal
       - REDIS_URL=redis://redis:6379
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-this-secret-in-dokploy-env}
+      - NEXTAUTH_SECRET=K8xPz2mN9vQwR4tY6uJ3hL5gF7dS0aE1bC8iO2pM4nW
     depends_on:
       mysql:
         condition: service_healthy
@@ -78,18 +79,20 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=mysql://${MYSQL_USER:-snipedeal}:${MYSQL_PASSWORD:-snipedeal_secret_2024}@mysql:3306/${MYSQL_DATABASE:-snipedeal}
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal
       - REDIS_URL=redis://redis:6379
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
+      app:
+        condition: service_started
     networks:
       - snipedeal-network
 
 # ============================================
-# VOLUMES PERSISTENTI (NON si perdono con rebuild!)
+# VOLUMES PERSISTENTI (dati NON si perdono!)
 # ============================================
 volumes:
   mysql-data:
