@@ -24,8 +24,9 @@ export async function GET() {
 
     // Se Redis è disponibile, prova a ottenere le stats reali
     try {
-      const { campaignQueue } = await import('@/lib/queue');
-      const jobCounts = await campaignQueue.getJobCounts();
+      const { getScraperQueue } = await import('@/lib/queue');
+      const queue = getScraperQueue();
+      const jobCounts = await queue.getJobCounts();
       stats.waiting = jobCounts.waiting || 0;
       stats.active = jobCounts.active || 0;
       stats.completed = jobCounts.completed || 0;
@@ -43,5 +44,3 @@ export async function GET() {
     );
   }
 }
-
-

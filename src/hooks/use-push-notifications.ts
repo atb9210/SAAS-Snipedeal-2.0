@@ -88,9 +88,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
 
       // Subscribe to push
+      const keyArray = urlBase64ToUint8Array(vapidPublicKey);
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: keyArray.buffer.slice(0) as unknown as BufferSource,
       });
 
       // Send subscription to server
