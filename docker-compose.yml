@@ -1,11 +1,7 @@
 # docker-compose.yml - SnipeDeal 2.0 PWA
-# Stack: Next.js + MySQL + Redis + Worker
-# Timestamp: 2024-12-09
+# Versione SEMPLIFICATA per Dokploy
 
 services:
-  # ============================================
-  # DATABASE MYSQL
-  # ============================================
   mysql:
     image: mysql:8.0
     restart: unless-stopped
@@ -22,45 +18,14 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    networks:
-      - snipedeal-network
 
-  # ============================================
-  # REDIS (BullMQ Job Queue)
-  # ============================================
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - snipedeal-network
 
-  # ============================================
-  # MIGRATE - Esegue migrazioni DB (una volta)
-  # ============================================
-  migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile.migrate
-    environment:
-      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - snipedeal-network
-    restart: "no"
-
-  # ============================================
-  # APP NEXT.JS (Frontend + API)
-  # ============================================
   app:
     build:
       context: .
@@ -77,47 +42,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    networks:
-      - snipedeal-network
 
-  # ============================================
-  # WORKER (Background Job Scraping)
-  # ============================================
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    networks:
-      - snipedeal-network
-
-# ============================================
-# VOLUMES PERSISTENTI
-# ============================================
 volumes:
   mysql-data:
-    driver: local
   redis-data:
-    driver: local
-
-# ============================================
-# NETWORK
-# ============================================
-networks:
-  snipedeal-network:
-    driver: bridge
