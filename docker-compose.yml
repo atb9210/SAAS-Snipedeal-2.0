@@ -53,8 +53,9 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Niente ports! Traefik gestisce il routing in Dokploy
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal
