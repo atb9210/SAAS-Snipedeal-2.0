@@ -1,11 +1,17 @@
 # Dockerfile - SnipeDeal 2.0 PWA
 # Multi-stage build per Next.js con Playwright
+# Ottimizzato per Dokploy Production
 # Timestamp: 2024-12-09
 
+# ============================================
+# BASE STAGE - Dipendenze sistema
+# ============================================
 FROM node:20-slim AS base
 
-# Installa dipendenze sistema per Playwright
+# Installa dipendenze sistema per Playwright e Prisma
 RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -23,61 +29,78 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libpango-1.0-0 \
     libcairo2 \
+    fonts-liberation \
+    libappindicator3-1 \
+    libu2f-udev \
+    libvulkan1 \
+    xdg-utils \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Stage per dipendenze
+# ============================================
+# DEPS STAGE - Installazione dipendenze
+# ============================================
 FROM base AS deps
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# Stage per development
-FROM base AS development
+# ============================================
+# BUILDER STAGE - Build produzione
+# ============================================
+FROM base AS builder
+WORKDIR /app
+
+# Copia dipendenze
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Installa browser Playwright
-RUN npx playwright install chromium
 
 # Genera Prisma client
 RUN npx prisma generate
 
-EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-CMD ["npm", "run", "dev"]
-
-# Stage per build produzione
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-RUN npx prisma generate
+# Build Next.js (standalone)
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Stage per produzione
-FROM base AS production
-ENV NODE_ENV production
+# ============================================
+# RUNNER STAGE - Produzione
+# ============================================
+FROM base AS runner
+WORKDIR /app
 
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Crea utente non-root per sicurezza
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copia file pubblici
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Installa Playwright per produzione
-RUN npx playwright install chromium
+# Imposta permessi per cartella .next
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+# Copia standalone build
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Copia Prisma schema e client generato
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Installa Playwright browser (Chromium) per scraping
+RUN npx playwright install chromium --with-deps
 
 USER nextjs
 
 EXPOSE 3000
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
 
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Avvia server Next.js standalone
 CMD ["node", "server.js"]
-
-

@@ -1,10 +1,13 @@
-# Dockerfile.worker - Worker per job scraping
+# Dockerfile.worker - Worker per job scraping SnipeDeal 2.0
+# Ottimizzato per Dokploy Production
 # Timestamp: 2024-12-09
 
 FROM node:20-slim
 
-# Installa dipendenze sistema per Playwright + curl per proxy fallback
+# Installa dipendenze sistema per Playwright + curl per health checks
 RUN apt-get update && apt-get install -y \
+    openssl \
+    ca-certificates \
     curl \
     libnss3 \
     libnspr4 \
@@ -23,21 +26,33 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libpango-1.0-0 \
     libcairo2 \
+    fonts-liberation \
+    libappindicator3-1 \
+    libu2f-udev \
+    libvulkan1 \
+    xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
+# Copia package files
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --omit=dev
 
+# Installa dipendenze dev necessarie per tsx
+RUN npm install tsx typescript @types/node
+
+# Copia sorgenti
 COPY . .
-
-# Installa browser Playwright
-RUN npx playwright install chromium
 
 # Genera Prisma client
 RUN npx prisma generate
 
-CMD ["npm", "run", "worker"]
+# Installa browser Playwright (Chromium)
+RUN npx playwright install chromium --with-deps
 
+# Variabili ambiente
+ENV NODE_ENV=production
 
+# Avvia worker
+CMD ["npx", "tsx", "src/workers/scraper-worker.ts"]

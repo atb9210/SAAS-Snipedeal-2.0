@@ -11,6 +11,8 @@ const withPWA = require('next-pwa')({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Output standalone per Docker production
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
