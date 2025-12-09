@@ -7,6 +7,9 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { getProxyManager } from '@/services/proxy';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/admin/proxy/test
  * Testa la connessione di un provider proxy

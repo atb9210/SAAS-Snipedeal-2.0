@@ -7,6 +7,9 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { addScraperJob } from '@/lib/queue';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // POST - Esegui campagna immediatamente
 export async function POST(
   request: NextRequest,

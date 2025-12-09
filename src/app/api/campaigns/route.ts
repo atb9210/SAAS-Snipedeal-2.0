@@ -8,6 +8,9 @@ import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { addScraperJob } from '@/lib/queue';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 // Schema validazione creazione campagna
 const createCampaignSchema = z.object({
   name: z.string().min(1, 'Nome richiesto').max(100),

@@ -51,7 +51,12 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN npx prisma generate
+
+# Disabilita telemetria e imposta DATABASE_URL dummy per build
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="mysql://dummy:dummy@localhost:3306/dummy"
+ENV SKIP_ENV_VALIDATION=1
+
 RUN npm run build
 
 # ============================================
