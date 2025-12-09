@@ -1,6 +1,8 @@
 // src/app/admin/plans/page.tsx - Gestione Piani Admin
 // Timestamp: 2024-12-09
 
+export const dynamic = 'force-dynamic';
+
 import prisma from '@/lib/prisma';
 
 async function getPlans() {

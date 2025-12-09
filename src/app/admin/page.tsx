@@ -1,6 +1,8 @@
 // src/app/admin/page.tsx - Admin Dashboard
 // Timestamp: 2024-12-09
 
+export const dynamic = 'force-dynamic';
+
 import prisma from '@/lib/prisma';
 import { AdminDashboardClient } from './admin-dashboard-client';
 
