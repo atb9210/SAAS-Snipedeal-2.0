@@ -1,16 +1,25 @@
 #!/bin/sh
-set -e
 
 echo "🚀 SnipeDeal PWA - Avvio..."
-echo "⏳ Attendo database..."
-sleep 10
 
-echo "📦 Creazione tabelle..."
-npx prisma db push --accept-data-loss
+# Aspetta MySQL con retry (max 60 secondi)
+echo "⏳ Attendo MySQL..."
+TRIES=0
+MAX=30
+until npx prisma db push --accept-data-loss 2>/dev/null; do
+    TRIES=$((TRIES + 1))
+    if [ $TRIES -ge $MAX ]; then
+        echo "❌ MySQL non raggiungibile dopo $MAX tentativi"
+        exit 1
+    fi
+    echo "   Retry $TRIES/$MAX..."
+    sleep 2
+done
 
-echo "🌱 Seed utenti..."
-npx prisma db seed || echo "⚠️ Seed fallito o già eseguito"
+echo "✅ Tabelle create!"
 
-echo "✅ Database pronto!"
-echo "🚀 Avvio Next.js..."
+echo "🌱 Seed..."
+npx prisma db seed || echo "⚠️ Seed già eseguito"
+
+echo "✅ Pronto!"
 exec node server.js
