@@ -1,7 +1,16 @@
 #!/bin/sh
-echo "🚀 Inizializzando database..."
-npx prisma db push --accept-data-loss 2>/dev/null || true
-npx prisma db seed 2>/dev/null || true
-echo "✅ Avvio app..."
-exec node server.js
+set -e
 
+echo "🚀 SnipeDeal PWA - Avvio..."
+echo "⏳ Attendo database..."
+sleep 10
+
+echo "📦 Creazione tabelle..."
+npx prisma db push --accept-data-loss
+
+echo "🌱 Seed utenti..."
+npx prisma db seed || echo "⚠️ Seed fallito o già eseguito"
+
+echo "✅ Database pronto!"
+echo "🚀 Avvio Next.js..."
+exec node server.js
