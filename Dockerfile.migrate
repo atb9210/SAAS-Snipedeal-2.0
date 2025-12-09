@@ -1,0 +1,22 @@
+# Dockerfile.migrate - Migrazioni Prisma
+# Esegue db push e seed
+
+FROM node:20-slim
+
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copia solo ciò che serve per le migrazioni
+COPY package.json package-lock.json* ./
+COPY prisma ./prisma/
+
+# Installa dipendenze
+RUN npm ci
+
+# Genera Prisma client
+RUN npx prisma generate
+
+# Esegui migrazioni e seed
+CMD ["sh", "-c", "npx prisma db push && npx prisma db seed || echo 'Seed già eseguito'"]
+

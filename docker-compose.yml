@@ -1,6 +1,5 @@
 # docker-compose.yml - SnipeDeal 2.0 PWA
 # Stack: Next.js + MySQL + Redis + Worker
-# DEPLOYMENT AUTOMATICO - Zero configurazione manuale
 # Timestamp: 2024-12-09
 
 services:
@@ -17,7 +16,6 @@ services:
       MYSQL_PASSWORD: snipedeal_secret_2024
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -45,15 +43,29 @@ services:
       - snipedeal-network
 
   # ============================================
+  # MIGRATE - Esegue migrazioni DB (una volta)
+  # ============================================
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    environment:
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - snipedeal-network
+    restart: "no"
+
+  # ============================================
   # APP NEXT.JS (Frontend + API)
-  # Migrazioni e seed AUTOMATICI all'avvio!
   # ============================================
   app:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    # Niente ports! Traefik gestisce il routing in Dokploy
     expose:
       - "3000"
     environment:
@@ -67,6 +79,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - snipedeal-network
 
@@ -87,13 +101,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      app:
-        condition: service_started
+      migrate:
+        condition: service_completed_successfully
     networks:
       - snipedeal-network
 
 # ============================================
-# VOLUMES PERSISTENTI (dati NON si perdono!)
+# VOLUMES PERSISTENTI
 # ============================================
 volumes:
   mysql-data:
