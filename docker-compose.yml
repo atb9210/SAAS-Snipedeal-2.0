@@ -1,5 +1,4 @@
 # docker-compose.yml - SnipeDeal 2.0 PWA
-# Versione SEMPLIFICATA per Dokploy
 
 services:
   mysql:
@@ -39,6 +38,19 @@ services:
       - REDIS_URL=redis://redis:6379
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
       - NEXTAUTH_SECRET=K8xPz2mN9vQwR4tY6uJ3hL5gF7dS0aE1bC8iO2pM4nW
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal
+      - REDIS_URL=redis://redis:6379
     depends_on:
       mysql:
         condition: service_healthy
