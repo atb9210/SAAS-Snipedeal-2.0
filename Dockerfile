@@ -99,10 +99,14 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Copia TUTTA la directory Prisma CLI (incluso WASM e altri file necessari)
+# Prisma CLI richiede diversi file binari e dipendenze
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-# Assicurati che tutti i file binari Prisma siano copiati
-RUN find ./node_modules/prisma -type f -name "*.wasm" -exec chmod +r {} \; 2>/dev/null || true
+# Copia anche le dipendenze necessarie per Prisma CLI
+COPY --from=builder /app/node_modules/@prisma/engines ./node_modules/@prisma/engines 2>/dev/null || true
+# Assicurati che tutti i file binari Prisma siano leggibili
+RUN chmod -R +r ./node_modules/prisma 2>/dev/null || true
+RUN chmod +x ./node_modules/.bin/prisma 2>/dev/null || true
 
 # Copia script di entrypoint per migrazioni automatiche
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
