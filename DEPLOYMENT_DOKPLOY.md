@@ -67,7 +67,23 @@ La strategia consigliata è usare **servizi separati** in Dokploy per garantire 
 
 1. **Account GitHub** con il repository SnipeDeal
 2. **Dokploy** configurato e funzionante
-3. **Dominio** (opzionale, puoi usare traefik.me per testing)
+3. **Docker installato** sul server remoto (richiesto da Dokploy)
+4. **Dominio** (opzionale, puoi usare traefik.me per testing)
+
+### ⚠️ Perché Docker è necessario?
+
+**Dokploy richiede Docker** sul server per funzionare (infrastruttura), ma per le applicazioni supporta diversi build types:
+
+- ✅ **Dockerfile** (consigliato per questo progetto)
+- ⚠️ Buildpacks (Heroku-style) - potrebbe non supportare Playwright
+- ⚠️ Nixpacks (auto-detect) - potrebbe non supportare Playwright
+- ❌ Static (solo siti statici)
+
+**Per SnipeDeal 2.0 usiamo Dockerfile perché:**
+- ✅ Playwright richiede dipendenze sistema specifiche (libnss3, libgbm1, ecc.)
+- ✅ Worker separato che esegue script TypeScript
+- ✅ Controllo preciso dell'ambiente (Node.js 20, Playwright Chromium, Prisma)
+- ✅ Build multi-stage ottimizzato per produzione
 
 ### Repository GitHub necessario:
 Assicurati che il repository contenga:

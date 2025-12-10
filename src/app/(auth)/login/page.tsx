@@ -3,6 +3,10 @@
 
 'use client';
 
+// Forza rendering dinamico (non SSG durante build)
+// Nota: export const deve essere dopo 'use client' ma Next.js lo gestisce correttamente
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';

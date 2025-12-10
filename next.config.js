@@ -36,6 +36,12 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['playwright', 'bullmq'],
   },
+  // Durante il build Docker, evita errori se il database non è disponibile
+  // Le pagine che usano Prisma devono avere export const dynamic = 'force-dynamic'
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
 };
 
 module.exports = withPWA(nextConfig);

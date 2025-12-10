@@ -1,6 +1,9 @@
 // src/app/page.tsx - Homepage redirect
 // Timestamp: 2024-12-09
 
+// Forza rendering dinamico (non SSG durante build)
+export const dynamic = 'force-dynamic';
+
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';

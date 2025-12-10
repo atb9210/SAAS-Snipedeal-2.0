@@ -57,10 +57,17 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Genera Prisma client
+# Prisma generate non richiede connessione al DB, solo lo schema
 RUN npx prisma generate
 
 # Build Next.js (standalone)
+# NOTA: Durante il build Docker, il database non è ancora disponibile
+# Il DATABASE_URL dummy serve SOLO per evitare errori durante il build
+# A runtime, Dokploy passerà il VERO DATABASE_URL dalle variabili ambiente configurate
 ENV NEXT_TELEMETRY_DISABLED=1
+# Se DATABASE_URL non è disponibile durante build, usa dummy temporaneo
+# Questo viene sovrascritto a runtime dalle env vars di Dokploy
+ENV DATABASE_URL=${DATABASE_URL:-mysql://dummy:dummy@localhost:3306/dummy}
 RUN npm run build
 
 # ============================================
