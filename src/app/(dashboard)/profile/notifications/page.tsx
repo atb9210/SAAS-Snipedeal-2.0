@@ -19,6 +19,7 @@ export default function NotificationSettingsPage() {
     isSubscribed, 
     isLoading, 
     permission,
+    error: pushError,
     subscribe, 
     unsubscribe 
   } = usePushNotifications();
@@ -123,6 +124,14 @@ export default function NotificationSettingsPage() {
                   'Attiva Notifiche'
                 )}
               </button>
+              
+              {/* Error Message */}
+              {pushError && (
+                <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                  <XCircle className="w-5 h-5 flex-shrink-0" />
+                  <span>{pushError}</span>
+                </div>
+              )}
               
               {/* Test Notification Button */}
               {isSubscribed && (
