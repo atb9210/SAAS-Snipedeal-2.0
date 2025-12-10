@@ -1,12 +1,6 @@
 # docker-compose.dokploy.yml
 # Stack completo per deployment su Dokploy
 # ============================================
-# Questo file gestisce:
-# - MySQL (database persistente)
-# - Redis (job queue)
-# - App Next.js (frontend + API)
-# - Worker (background scraping)
-# ============================================
 
 services:
   # ============================================
@@ -31,7 +25,7 @@ services:
       retries: 10
       start_period: 40s
     networks:
-      - snipedeal-network
+      - dokploy-network
 
   # ============================================
   # REDIS (Job Queue per BullMQ)
@@ -50,7 +44,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - snipedeal-network
+      - dokploy-network
 
   # ============================================
   # APP NEXT.JS (Frontend + API)
@@ -61,40 +55,25 @@ services:
       dockerfile: Dockerfile
     container_name: snipedeal-app
     restart: unless-stopped
-    # NON esporre porte - Dokploy/Traefik gestisce il routing
-    # ports:
-    #   - "3000:3000"
     expose:
       - "3000"
     environment:
-      # Database
       - DATABASE_URL=mysql://${MYSQL_USER:-snipedeal}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-snipedeal_pwa}
-      
-      # Redis (no password - internal network only)
       - REDIS_URL=redis://redis:6379
-      
-      # NextAuth
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      
-      # OAuth (optional)
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GITHUB_ID=${GITHUB_ID:-}
       - GITHUB_SECRET=${GITHUB_SECRET:-}
-      
-      # App config
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
-    
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
-    
     networks:
-      - snipedeal-network
       - dokploy-network
 
   # ============================================
@@ -107,15 +86,9 @@ services:
     container_name: snipedeal-worker
     restart: unless-stopped
     environment:
-      # Database
       - DATABASE_URL=mysql://${MYSQL_USER:-snipedeal}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-snipedeal_pwa}
-      
-      # Redis (no password - internal network only)
       - REDIS_URL=redis://redis:6379
-      
-      # App config
       - NODE_ENV=production
-    
     depends_on:
       mysql:
         condition: service_healthy
@@ -123,9 +96,8 @@ services:
         condition: service_healthy
       app:
         condition: service_started
-    
     networks:
-      - snipedeal-network
+      - dokploy-network
 
 # ============================================
 # VOLUMES PERSISTENTI
@@ -137,13 +109,8 @@ volumes:
     driver: local
 
 # ============================================
-# NETWORKS
+# NETWORK - Solo Dokploy network
 # ============================================
 networks:
-  # Rete interna per comunicazione tra servizi
-  snipedeal-network:
-    driver: bridge
-  
-  # Rete Dokploy per Traefik (routing esterno)
   dokploy-network:
     external: true
