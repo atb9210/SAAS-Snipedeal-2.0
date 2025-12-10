@@ -1,0 +1,135 @@
+# docker-compose.dokploy.local.yml
+# Versione locale per testare docker-compose.dokploy.yml
+# Identica a dokploy ma con ports mappati per accesso locale
+# ============================================
+
+services:
+  # ============================================
+  # DATABASE MYSQL
+  # ============================================
+  mysql:
+    image: mysql:8.0
+    container_name: snipedeal-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-snipedeal_root_2024}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-snipedeal_pwa}
+      MYSQL_USER: ${MYSQL_USER:-snipedeal}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-snipedeal_secret_2024}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-snipedeal_root_2024}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - dokploy-network
+
+  # ============================================
+  # REDIS (Job Queue per BullMQ)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: snipedeal-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - dokploy-network
+
+  # ============================================
+  # APP NEXT.JS (Frontend + API)
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: snipedeal-app
+    restart: unless-stopped
+    user: root
+    ports:
+      - "3000:3000"  # ← Aggiunto per accesso locale
+    expose:
+      - "3000"
+    command: >
+      sh -c "
+      echo '🚀 Starting SnipeDeal App...' &&
+      echo '⏳ Waiting 15 seconds for database to be ready...' &&
+      sleep 15 &&
+      echo '📦 Installing Prisma CLI and ts-node globally...' &&
+      npm install -g prisma@5.22.0 ts-node &&
+      echo '📦 Running database migrations...' &&
+      prisma db push --schema=./prisma/schema.prisma --accept-data-loss &&
+      echo '🌱 Seeding database...' &&
+      prisma db seed --schema=./prisma/schema.prisma || echo '⚠️ Seed skipped' &&
+      echo '🎉 Starting Next.js...' &&
+      node server.js
+      "
+    environment:
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal_pwa
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-test-secret-local}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_ID=${GITHUB_ID:-}
+      - GITHUB_SECRET=${GITHUB_SECRET:-}
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dokploy-network
+
+  # ============================================
+  # WORKER (Background Job Processor)
+  # ============================================
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: snipedeal-worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=mysql://snipedeal:snipedeal_secret_2024@mysql:3306/snipedeal_pwa
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks:
+      - dokploy-network
+
+# ============================================
+# VOLUMES PERSISTENTI
+# ============================================
+volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
+
+# ============================================
+# NETWORK - Solo Dokploy network
+# ============================================
+networks:
+  dokploy-network:
+    external: true
+
