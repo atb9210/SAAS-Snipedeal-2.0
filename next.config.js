@@ -1,12 +1,6 @@
 // next.config.js - Configurazione Next.js 14 con PWA
-// Timestamp: 2024-12-09
-
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-});
+// Timestamp: 2024-12-10
+// NOTA: Service Worker gestito manualmente in /public/sw.js
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -44,6 +38,6 @@ const nextConfig = {
   },
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig;
 
 
