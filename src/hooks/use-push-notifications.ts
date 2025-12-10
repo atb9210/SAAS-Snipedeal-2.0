@@ -39,13 +39,22 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       // Check current permission
       setPermission(Notification.permission);
 
-      // Check if already subscribed
+      // Check if already subscribed with timeout to prevent infinite loading
       try {
-        const registration = await navigator.serviceWorker.ready;
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Service Worker timeout')), 5000)
+        );
+        
+        const registration = await Promise.race([
+          navigator.serviceWorker.ready,
+          timeoutPromise
+        ]) as ServiceWorkerRegistration;
+        
         const subscription = await registration.pushManager.getSubscription();
         setIsSubscribed(!!subscription);
       } catch (error) {
         console.error('Error checking subscription:', error);
+        // Service worker not ready, but we can still show the UI
       }
 
       setIsLoading(false);
