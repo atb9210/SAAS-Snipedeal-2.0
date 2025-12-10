@@ -284,22 +284,47 @@ NODE_ENV=production
 
 Dopo il primo deploy, devi eseguire le migrazioni Prisma:
 
-### Metodo 1: Tramite terminal Dokploy
+### Metodo 1: Tramite terminal Dokploy (CONSIGLIATO)
 
 1. Vai su `snipedeal-app-pwa` → **"Terminal"**
-2. Esegui:
+2. **IMPORTANTE**: Verifica di essere nella directory corretta e che lo schema Prisma esista:
 ```bash
+# Verifica directory corrente
+pwd
+
+# Verifica che lo schema Prisma esista
+ls -la prisma/
+
+# Se lo schema esiste, esegui:
 npx prisma db push
+
+# Poi esegui il seed:
 npx prisma db seed
+```
+
+**Se Prisma non trova lo schema**, prova:
+```bash
+# Specifica il path esplicito dello schema
+npx prisma db push --schema=./prisma/schema.prisma
+npx prisma db seed --schema=./prisma/schema.prisma
 ```
 
 ### Metodo 2: SSH nel container
 
 ```bash
 docker exec -it snipedeal-app-pwa sh
-npx prisma db push
-npx prisma db seed
+cd /app
+ls -la prisma/  # Verifica che lo schema esista
+npx prisma db push --schema=./prisma/schema.prisma
+npx prisma db seed --schema=./prisma/schema.prisma
 ```
+
+### Troubleshooting
+
+**Errore: "Could not find Prisma Schema"**
+- Verifica di essere nella directory `/app` nel container
+- Verifica che `prisma/schema.prisma` esista: `ls -la prisma/`
+- Usa `--schema=./prisma/schema.prisma` per specificare il path esplicito
 
 ---
 

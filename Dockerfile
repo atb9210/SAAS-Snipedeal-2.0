@@ -98,9 +98,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Copia anche il binario Prisma CLI per eseguire migrazioni
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+
+# Copia script di entrypoint
+COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
 # Installa Playwright browser (Chromium) per scraping
 RUN npx playwright install chromium --with-deps
+
+# Imposta permessi per node_modules/.bin (per Prisma CLI)
+RUN chmod +x ./node_modules/.bin/prisma 2>/dev/null || true
 
 USER nextjs
 
@@ -109,5 +119,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Avvia server Next.js standalone
-CMD ["node", "server.js"]
+# Usa entrypoint script che esegue migrazioni e seed automaticamente
+ENTRYPOINT ["./docker-entrypoint.sh"]
