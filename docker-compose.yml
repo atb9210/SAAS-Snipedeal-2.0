@@ -17,8 +17,6 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
-    networks:
-      - snipedeal-net
 
   redis:
     image: redis:7-alpine
@@ -26,8 +24,6 @@ services:
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes
-    networks:
-      - snipedeal-net
 
   app:
     build:
@@ -45,8 +41,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    networks:
-      - snipedeal-net
 
   worker:
     build:
@@ -60,13 +54,7 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-    networks:
-      - snipedeal-net
 
 volumes:
   mysql-data:
   redis-data:
-
-networks:
-  snipedeal-net:
-    driver: bridge
