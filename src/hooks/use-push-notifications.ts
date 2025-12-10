@@ -161,7 +161,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       try {
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: keyArray,
+          applicationServerKey: keyArray.buffer as ArrayBuffer,
         });
       } catch (pushError) {
         console.error('PushManager subscribe error:', pushError);
