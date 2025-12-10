@@ -1,6 +1,9 @@
 // src/app/admin/plans/page.tsx - Gestione Piani Admin
 // Timestamp: 2024-12-09
 
+// Forza rendering dinamico (non SSG durante build)
+export const dynamic = 'force-dynamic';
+
 import prisma from '@/lib/prisma';
 
 async function getPlans() {

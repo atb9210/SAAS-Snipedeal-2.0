@@ -65,9 +65,9 @@ RUN npx prisma generate
 # Il DATABASE_URL dummy serve SOLO per evitare errori durante il build
 # A runtime, Dokploy passerà il VERO DATABASE_URL dalle variabili ambiente configurate
 ENV NEXT_TELEMETRY_DISABLED=1
-# Se DATABASE_URL non è disponibile durante build, usa dummy temporaneo
+# Usa DATABASE_URL dummy durante build (non viene usato, serve solo per evitare errori)
 # Questo viene sovrascritto a runtime dalle env vars di Dokploy
-ENV DATABASE_URL=${DATABASE_URL:-mysql://dummy:dummy@localhost:3306/dummy}
+ENV DATABASE_URL="mysql://dummy:dummy@localhost:3306/dummy"
 RUN npm run build
 
 # ============================================

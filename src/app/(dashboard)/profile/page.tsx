@@ -1,6 +1,9 @@
 // src/app/(dashboard)/profile/page.tsx - Pagina Profilo
 // Timestamp: 2024-12-09
 
+// Forza rendering dinamico (non SSG durante build)
+export const dynamic = 'force-dynamic';
+
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';

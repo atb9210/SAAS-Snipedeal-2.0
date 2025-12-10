@@ -1,6 +1,9 @@
 // src/app/api/admin/jobs/stats/route.ts - API statistiche jobs
 // Timestamp: 2024-12-09
 
+// Forza rendering dinamico (non SSG durante build)
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';

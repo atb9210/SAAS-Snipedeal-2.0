@@ -1,6 +1,9 @@
 // src/app/admin/users/page.tsx - Admin Users Page
 // Timestamp: 2024-12-09
 
+// Forza rendering dinamico (non SSG durante build)
+export const dynamic = 'force-dynamic';
+
 import prisma from '@/lib/prisma';
 import { AdminUsersClient } from './admin-users-client';
 

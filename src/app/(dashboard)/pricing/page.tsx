@@ -1,6 +1,9 @@
 // src/app/(dashboard)/pricing/page.tsx - Pagina Piani e Prezzi
 // Timestamp: 2024-12-09
 
+// Forza rendering dinamico (non SSG durante build)
+export const dynamic = 'force-dynamic';
+
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
