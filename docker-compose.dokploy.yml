@@ -64,7 +64,7 @@ services:
       echo '⏳ Waiting 15 seconds for database to be ready...' &&
       sleep 15 &&
       echo '📦 Installing Prisma CLI globally...' &&
-      npm install -g prisma@latest &&
+      npm install -g prisma@5.22.0 &&
       echo '📦 Running database migrations...' &&
       prisma db push --schema=./prisma/schema.prisma --accept-data-loss &&
       echo '🌱 Seeding database...' &&
