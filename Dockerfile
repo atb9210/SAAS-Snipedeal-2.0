@@ -102,8 +102,8 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Prisma CLI richiede diversi file binari e dipendenze
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-# Copia anche le dipendenze necessarie per Prisma CLI
-COPY --from=builder /app/node_modules/@prisma/engines ./node_modules/@prisma/engines 2>/dev/null || true
+# Copia anche le dipendenze necessarie per Prisma CLI (engines contiene i file WASM)
+COPY --from=builder /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
 # Assicurati che tutti i file binari Prisma siano leggibili
 RUN chmod -R +r ./node_modules/prisma 2>/dev/null || true
 RUN chmod +x ./node_modules/.bin/prisma 2>/dev/null || true
