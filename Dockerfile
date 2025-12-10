@@ -98,9 +98,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-# Copia anche il binario Prisma CLI per eseguire migrazioni
+# Copia TUTTA la directory Prisma CLI (incluso WASM e altri file necessari)
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+# Assicurati che tutti i file binari Prisma siano copiati
+RUN find ./node_modules/prisma -type f -name "*.wasm" -exec chmod +r {} \; 2>/dev/null || true
 
 # Copia script di entrypoint per migrazioni automatiche
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
