@@ -93,8 +93,17 @@ export class ProxyManager {
     await this.initialize();
 
     if (this.providers.size === 0) {
-      console.warn('[ProxyManager] No proxy providers available');
-      return null;
+      // Se non ci sono provider ma siamo già inizializzati, prova a ricaricare
+      // (potrebbe essere stato aggiunto un proxy dopo l'inizializzazione)
+      if (this.initialized) {
+        console.log('[ProxyManager] No providers found, reloading from database...');
+        await this.reload();
+      }
+      
+      if (this.providers.size === 0) {
+        console.warn('[ProxyManager] No proxy providers available');
+        return null;
+      }
     }
 
     // Round-robin tra i provider
