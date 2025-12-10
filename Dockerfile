@@ -102,8 +102,8 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 
-# Copia script di entrypoint
-COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
+# Copia script di entrypoint per migrazioni automatiche
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
 # Installa Playwright browser (Chromium) per scraping
