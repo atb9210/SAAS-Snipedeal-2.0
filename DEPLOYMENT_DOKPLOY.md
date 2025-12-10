@@ -282,49 +282,66 @@ NODE_ENV=production
 
 ## 🔄 Step 7: Migrazioni Database {#step-7}
 
-Dopo il primo deploy, devi eseguire le migrazioni Prisma:
+⚠️ **IMPORTANTE**: Le migrazioni database vanno eseguite **MANUALMENTE** una sola volta dopo il primo deploy.
 
-### Metodo 1: Tramite terminal Dokploy (CONSIGLIATO)
+### Procedura (Tramite terminal Dokploy)
 
 1. Vai su `snipedeal-app-pwa` → **"Terminal"**
-2. **IMPORTANTE**: Verifica di essere nella directory corretta e che lo schema Prisma esista:
-```bash
-# Verifica directory corrente
-pwd
-
-# Verifica che lo schema Prisma esista
-ls -la prisma/
-
-# Se lo schema esiste, esegui:
-npx prisma db push
-
-# Poi esegui il seed:
-npx prisma db seed
-```
-
-**Se Prisma non trova lo schema**, prova:
-```bash
-# Specifica il path esplicito dello schema
-npx prisma db push --schema=./prisma/schema.prisma
-npx prisma db seed --schema=./prisma/schema.prisma
-```
-
-### Metodo 2: SSH nel container
+2. Esegui come **root** (necessario per installare pacchetti):
 
 ```bash
-docker exec -it snipedeal-app-pwa sh
+# 1. Diventa root
+su root
+# (non richiede password nel container)
+
+# 2. Vai nella directory app
 cd /app
-ls -la prisma/  # Verifica che lo schema esista
+
+# 3. Verifica che lo schema Prisma esista
+ls -la prisma/schema.prisma
+
+# 4. Esegui le migrazioni (crea le tabelle)
 npx prisma db push --schema=./prisma/schema.prisma
+
+# 5. Popola il database con dati iniziali (piani, admin, ecc.)
 npx prisma db seed --schema=./prisma/schema.prisma
+
+# 6. Verifica che le tabelle siano state create
+npx prisma db execute --stdin --schema=./prisma/schema.prisma <<< "SHOW TABLES;"
+
+# 7. Esci da root
+exit
+```
+
+### Verifica che le migrazioni siano andate a buon fine
+
+```bash
+# Nel terminale dell'app, verifica le tabelle
+npx prisma db execute --stdin --schema=./prisma/schema.prisma <<< "SHOW TABLES;"
+
+# Dovresti vedere:
+# - User
+# - Plan
+# - Campaign
+# - Result
+# - JobLog
+# - ProxyProvider
+# - ProxyUsageLog
 ```
 
 ### Troubleshooting
 
+**Errore: "EACCES: permission denied"**
+- Soluzione: Esegui come root con `su root`
+
 **Errore: "Could not find Prisma Schema"**
-- Verifica di essere nella directory `/app` nel container
-- Verifica che `prisma/schema.prisma` esista: `ls -la prisma/`
-- Usa `--schema=./prisma/schema.prisma` per specificare il path esplicito
+- Verifica di essere nella directory `/app`: `pwd`
+- Verifica che lo schema esista: `ls -la prisma/schema.prisma`
+
+**Errore: "Can't reach database server"**
+- Verifica che il DATABASE_URL sia corretto: `echo $DATABASE_URL`
+- Verifica che il servizio MySQL sia running (verde in Dokploy)
+- Il DATABASE_URL deve puntare al nome del servizio MySQL (es. `snipedeal-mysql-pwa`), non al container dell'app
 
 ---
 
