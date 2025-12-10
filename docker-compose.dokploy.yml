@@ -8,8 +8,6 @@
 # - Worker (background scraping)
 # ============================================
 
-version: '3.8'
-
 services:
   # ============================================
   # DATABASE MYSQL
@@ -44,7 +42,7 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -115,8 +113,8 @@ services:
       # Database
       - DATABASE_URL=mysql://${MYSQL_USER:-snipedeal}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-snipedeal_pwa}
       
-      # Redis
-      - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379
+      # Redis (no password - internal network only)
+      - REDIS_URL=redis://redis:6379
       
       # App config
       - NODE_ENV=production
