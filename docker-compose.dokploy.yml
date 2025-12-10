@@ -83,6 +83,10 @@ services:
       - GITHUB_SECRET=${GITHUB_SECRET:-}
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      # VAPID Keys for Push Notifications
+      - NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - VAPID_EMAIL=${VAPID_EMAIL:-mailto:admin@snipedeal.it}
     depends_on:
       mysql:
         condition: service_healthy
@@ -104,6 +108,10 @@ services:
       - DATABASE_URL=mysql://${MYSQL_USER:-snipedeal}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-snipedeal_pwa}
       - REDIS_URL=redis://redis:6379
       - NODE_ENV=production
+      # VAPID Keys for Push Notifications (worker needs these to send notifications)
+      - NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - VAPID_EMAIL=${VAPID_EMAIL:-mailto:admin@snipedeal.it}
     depends_on:
       mysql:
         condition: service_healthy

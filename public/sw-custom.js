@@ -11,6 +11,7 @@ self.addEventListener('push', (event) => {
     body: 'Hai nuove notifiche',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/badge-72x72.png',
+    image: null, // Optional large image
   };
 
   try {

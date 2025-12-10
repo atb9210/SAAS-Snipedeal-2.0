@@ -49,6 +49,7 @@ export async function sendPushNotification(
       ...payload,
       icon: payload.icon || '/icons/icon-192x192.png',
       badge: payload.badge || '/icons/badge-72x72.png',
+      timestamp: Date.now(),
     });
 
     await webpush.sendNotification(

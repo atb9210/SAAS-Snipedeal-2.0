@@ -1,15 +1,19 @@
 // src/app/(dashboard)/profile/notifications/page.tsx - Notification Settings
-// Timestamp: 2024-12-09
+// Timestamp: 2024-12-10
 
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Bell, BellOff, Smartphone, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bell, BellOff, Smartphone, Loader2, Send, CheckCircle, XCircle } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 
 export default function NotificationSettingsPage() {
   const router = useRouter();
+  const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
+  
   const { 
     isSupported, 
     isSubscribed, 
@@ -18,6 +22,31 @@ export default function NotificationSettingsPage() {
     subscribe, 
     unsubscribe 
   } = usePushNotifications();
+
+  const sendTestNotification = async () => {
+    setTestStatus('loading');
+    try {
+      const response = await fetch('/api/push/test', { method: 'POST' });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setTestStatus('success');
+        setTestMessage(data.message || 'Notifica inviata!');
+      } else {
+        setTestStatus('error');
+        setTestMessage(data.error || 'Errore nell\'invio');
+      }
+    } catch {
+      setTestStatus('error');
+      setTestMessage('Errore di connessione');
+    }
+    
+    // Reset after 3 seconds
+    setTimeout(() => {
+      setTestStatus('idle');
+      setTestMessage('');
+    }, 3000);
+  };
 
   const handleToggle = async () => {
     if (isSubscribed) {
@@ -78,21 +107,51 @@ export default function NotificationSettingsPage() {
               Le notifiche sono bloccate. Abilita le notifiche nelle impostazioni del browser.
             </div>
           ) : (
-            <button
-              onClick={handleToggle}
-              disabled={isLoading}
-              className={`w-full btn-lg ${
-                isSubscribed ? 'btn-outline' : 'btn-primary'
-              }`}
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : isSubscribed ? (
-                'Disattiva Notifiche'
-              ) : (
-                'Attiva Notifiche'
+            <div className="space-y-3">
+              <button
+                onClick={handleToggle}
+                disabled={isLoading}
+                className={`w-full btn-lg ${
+                  isSubscribed ? 'btn-outline' : 'btn-primary'
+                }`}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : isSubscribed ? (
+                  'Disattiva Notifiche'
+                ) : (
+                  'Attiva Notifiche'
+                )}
+              </button>
+              
+              {/* Test Notification Button */}
+              {isSubscribed && (
+                <button
+                  onClick={sendTestNotification}
+                  disabled={testStatus === 'loading'}
+                  className="w-full btn-lg bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center justify-center gap-2"
+                >
+                  {testStatus === 'loading' ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : testStatus === 'success' ? (
+                    <>
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <span>{testMessage}</span>
+                    </>
+                  ) : testStatus === 'error' ? (
+                    <>
+                      <XCircle className="w-5 h-5 text-red-500" />
+                      <span>{testMessage}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      <span>Invia Notifica di Test</span>
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           )}
         </motion.div>
 

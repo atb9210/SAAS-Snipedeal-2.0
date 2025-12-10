@@ -8,6 +8,7 @@ import { getRedis } from '../lib/redis';
 import { QUEUE_NAMES, ScraperJobData, scheduleCampaignJob, addScraperJob, getScraperQueue } from '../lib/queue';
 import { createScraper, isPlatformSupported } from '../services/scrapers';
 import { getProxyManager } from '../services/proxy';
+import { sendNewResultsNotification, PushSubscription } from '../lib/web-push';
 
 const prisma = new PrismaClient();
 const SCHEDULER_INTERVAL_MS = 60000; // Check ogni 60 secondi
@@ -189,14 +190,38 @@ const worker = new Worker<ScraperJobData>(
 
       console.log(`[Job ${job.id}] Completed: ${newCount} new results`);
 
-      // TODO: Send push notifications for new results
-      // if (newCount > 0) {
-      //   await addNotificationJob({
-      //     userId,
-      //     resultIds: newResultIds,
-      //     campaignName: campaign.name,
-      //   });
-      // }
+      // Send push notifications for new results
+      if (newCount > 0 && campaign.user.pushSubscription) {
+        try {
+          const subscription = JSON.parse(campaign.user.pushSubscription) as PushSubscription;
+          const notificationSent = await sendNewResultsNotification(
+            subscription,
+            campaign.name,
+            newCount
+          );
+          
+          if (notificationSent) {
+            console.log(`[Job ${job.id}] Push notification sent for ${newCount} new results`);
+            
+            // Update job log with notification info
+            await prisma.jobLog.update({
+              where: { id: jobLog.id },
+              data: {
+                notified: newCount,
+              },
+            });
+
+            // Mark results as notified
+            await prisma.result.updateMany({
+              where: { id: { in: newResultIds } },
+              data: { notified: true },
+            });
+          }
+        } catch (pushError) {
+          console.error(`[Job ${job.id}] Failed to send push notification:`, pushError);
+          // Don't throw - push notification failure shouldn't fail the job
+        }
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
