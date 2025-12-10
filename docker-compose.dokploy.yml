@@ -55,6 +55,7 @@ services:
       dockerfile: Dockerfile
     container_name: snipedeal-app
     restart: unless-stopped
+    user: root
     expose:
       - "3000"
     command: >
