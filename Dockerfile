@@ -125,5 +125,13 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Usa entrypoint script che esegue migrazioni e seed automaticamente
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Disabilitato entrypoint automatico perché Prisma CLI richiede troppe dipendenze
+# Le migrazioni vanno fatte manualmente una volta:
+# 1. Vai nel terminale dell'app come root: su root
+# 2. cd /app
+# 3. npx prisma db push --schema=./prisma/schema.prisma
+# 4. npx prisma db seed --schema=./prisma/schema.prisma
+# ENTRYPOINT ["./docker-entrypoint.sh"]
+
+# Avvia direttamente Next.js
+CMD ["node", "server.js"]
