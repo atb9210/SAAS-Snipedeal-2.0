@@ -104,6 +104,9 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 # Copia anche le dipendenze necessarie per Prisma CLI (engines contiene i file WASM)
 COPY --from=builder /app/node_modules/@prisma/engines ./node_modules/@prisma/engines
+# Copia bcryptjs per il seed
+COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
+COPY --from=builder /app/node_modules/@types/bcryptjs ./node_modules/@types/bcryptjs
 # Assicurati che tutti i file binari Prisma siano leggibili
 RUN chmod -R +r ./node_modules/prisma 2>/dev/null || true
 RUN chmod +x ./node_modules/.bin/prisma 2>/dev/null || true
