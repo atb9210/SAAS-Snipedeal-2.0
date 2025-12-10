@@ -57,6 +57,17 @@ services:
     restart: unless-stopped
     expose:
       - "3000"
+    command: sh -c "
+      echo '🚀 Starting SnipeDeal App...' &&
+      echo '⏳ Waiting 15 seconds for database to be ready...' &&
+      sleep 15 &&
+      echo '📦 Running database migrations...' &&
+      npx prisma db push --schema=./prisma/schema.prisma --skip-generate --accept-data-loss &&
+      echo '🌱 Seeding database...' &&
+      npx prisma db seed --schema=./prisma/schema.prisma || echo '⚠️ Seed skipped (might be already populated)' &&
+      echo '🎉 Starting Next.js application...' &&
+      node server.js
+    "
     environment:
       - DATABASE_URL=mysql://${MYSQL_USER:-snipedeal}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-snipedeal_pwa}
       - REDIS_URL=redis://redis:6379
