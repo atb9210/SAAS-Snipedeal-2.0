@@ -62,10 +62,12 @@ services:
       echo '🚀 Starting SnipeDeal App...' &&
       echo '⏳ Waiting 15 seconds for database to be ready...' &&
       sleep 15 &&
+      echo '📦 Installing Prisma CLI globally...' &&
+      npm install -g prisma@latest &&
       echo '📦 Running database migrations...' &&
-      npx prisma db push --schema=./prisma/schema.prisma --skip-generate --accept-data-loss &&
+      prisma db push --schema=./prisma/schema.prisma --skip-generate --accept-data-loss &&
       echo '🌱 Seeding database...' &&
-      npx prisma db seed --schema=./prisma/schema.prisma || echo '⚠️ Seed skipped' &&
+      prisma db seed --schema=./prisma/schema.prisma || echo '⚠️ Seed skipped' &&
       echo '🎉 Starting Next.js...' &&
       node server.js
       "
