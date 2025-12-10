@@ -2,10 +2,13 @@
 
 echo "🚀 SnipeDeal PWA - Avvio..."
 
-# Aspetta MySQL con retry (max 60 secondi)
-echo "⏳ Attendo MySQL..."
+# Aspetta che MySQL sia completamente pronto
+echo "⏳ Attendo MySQL (30 secondi)..."
+sleep 30
+
+echo "📦 Creazione tabelle..."
 TRIES=0
-MAX=30
+MAX=20
 until npx prisma db push --accept-data-loss 2>/dev/null; do
     TRIES=$((TRIES + 1))
     if [ $TRIES -ge $MAX ]; then
@@ -13,7 +16,7 @@ until npx prisma db push --accept-data-loss 2>/dev/null; do
         exit 1
     fi
     echo "   Retry $TRIES/$MAX..."
-    sleep 2
+    sleep 3
 done
 
 echo "✅ Tabelle create!"
