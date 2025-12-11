@@ -11,8 +11,12 @@ import { authOptions } from '@/lib/auth';
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
+    
+    console.log('[Jobs Stats API] Session:', JSON.stringify(session, null, 2));
 
-    if (!session || session.user.role !== 'admin') {
+    // Il ruolo nel DB è uppercase (ADMIN), confronto case-insensitive
+    if (!session || session.user.role?.toUpperCase() !== 'ADMIN') {
+      console.log('[Jobs Stats API] Unauthorized - role:', session?.user?.role);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

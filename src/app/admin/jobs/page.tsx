@@ -25,13 +25,17 @@ export default function AdminJobsPage() {
 
   const fetchJobStats = async () => {
     setLoading(true);
+    setError(null); // Reset errore prima di ogni chiamata
     try {
-      const res = await fetch('/api/admin/jobs/stats');
+      const res = await fetch('/api/admin/jobs/stats', {
+        credentials: 'include', // Includi cookies per autenticazione
+      });
       if (res.ok) {
         const data = await res.json();
         setStats(data);
       } else {
-        setError('Impossibile caricare le statistiche dei job');
+        const errorData = await res.json().catch(() => ({}));
+        setError(errorData.error || 'Impossibile caricare le statistiche dei job');
       }
     } catch (err) {
       setError('Errore di connessione');
