@@ -89,7 +89,13 @@ export abstract class BaseScraper {
   protected extractNumericPrice(price: string | null): number | null {
     if (!price) return null;
     
-    const cleaned = price.replace(/[^\d.,]/g, '').replace(',', '.');
+    // Formato italiano: 85.000,50 → rimuovi punti (migliaia), sostituisci virgola con punto (decimali)
+    // Formato semplice: 85000 o 85.00
+    const cleaned = price
+      .replace(/[^\d.,]/g, '')  // Rimuovi tutto tranne numeri, punti e virgole
+      .replace(/\.(?=\d{3})/g, '')  // Rimuovi punti seguiti da 3 cifre (separatori migliaia)
+      .replace(',', '.');  // Sostituisci virgola con punto per decimali
+    
     const num = parseFloat(cleaned);
     
     return isNaN(num) ? null : num;
