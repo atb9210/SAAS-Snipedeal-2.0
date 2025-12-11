@@ -323,6 +323,7 @@ export class SubitoScraper extends BaseScraper {
     const params = new URLSearchParams({
       q: keyword,
       order: 'datedesc', // Ordina per più recenti (IMPORTANTE!)
+      qso: 'true', // Ricerca solo nel titolo per risultati più precisi
     });
 
     if (page > 1) {
