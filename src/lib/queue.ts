@@ -30,8 +30,14 @@ export function getScraperQueue(): Queue<ScraperJobData> {
     scraperQueue = new Queue<ScraperJobData>(QUEUE_NAMES.SCRAPER, {
       connection: getRedis(),
       defaultJobOptions: {
-        removeOnComplete: 100, // Keep last 100 completed jobs
-        removeOnFail: 50,      // Keep last 50 failed jobs
+        removeOnComplete: {
+          age: 3600, // Keep completed jobs for 1 hour
+          count: 1000, // Keep last 1000 completed jobs
+        },
+        removeOnFail: {
+          age: 86400, // Keep failed jobs for 24 hours
+          count: 500, // Keep last 500 failed jobs
+        },
         attempts: 3,           // Retry 3 times on failure
         backoff: {
           type: 'exponential',

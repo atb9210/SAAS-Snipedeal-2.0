@@ -13,10 +13,15 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:build": "docker-compose build",
-    "worker": "tsx src/workers/scraper-worker.ts"
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:build": "docker compose build",
+    "worker": "tsx src/workers/scraper-worker.ts",
+    "dev:services": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:services:down": "docker compose -f docker-compose.dev.yml down",
+    "dev:services:logs": "docker compose -f docker-compose.dev.yml logs -f",
+    "dev:setup": "npm run db:generate && npm run db:push && npm run db:seed",
+    "dev:full": "npm run dev:services && sleep 5 && npm run dev:setup && npm run dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

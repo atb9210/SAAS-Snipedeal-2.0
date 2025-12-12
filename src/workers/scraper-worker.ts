@@ -41,7 +41,9 @@ const worker = new Worker<ScraperJobData>(
     const { campaignId, userId } = job.data;
     const startTime = Date.now();
 
-    console.log(`[Job ${job.id}] Processing campaign: ${campaignId}`);
+    console.log(`🔄 [Job ${job.id}] Starting processing for campaign: ${campaignId}`);
+    console.log(`   Job data:`, JSON.stringify(job.data));
+    console.log(`   Timestamp: ${new Date().toISOString()}`);
 
     // Create job log
     const jobLog = await prisma.jobLog.create({
@@ -165,15 +167,19 @@ const worker = new Worker<ScraperJobData>(
 
       // Calculate next run time based on user's plan
       const frequencyMins = campaign.user.plan?.frequencyMins || 180;
-      const nextRunAt = new Date(Date.now() + frequencyMins * 60 * 1000);
+      const delayMs = frequencyMins * 60 * 1000;
+      const nextRunAt = new Date(Date.now() + delayMs);
+
+      console.log(`[Job ${job.id}] Scheduling next run: frequencyMins=${frequencyMins}, delayMs=${delayMs}, nextRunAt=${nextRunAt.toISOString()}`);
 
       await prisma.campaign.update({
         where: { id: campaignId },
         data: { nextRunAt },
       });
 
-      // Schedule next run
-      await scheduleCampaignJob(campaignId, userId, frequencyMins * 60 * 1000);
+      // Schedule next run - NON usare delay qui, lo scheduler si occuperà di aggiungere il job quando nextRunAt <= now
+      // await scheduleCampaignJob(campaignId, userId, delayMs);
+      console.log(`[Job ${job.id}] Next run scheduled via database (nextRunAt), scheduler will pick it up automatically`);
 
       // Update job log
       await prisma.jobLog.update({
@@ -188,7 +194,11 @@ const worker = new Worker<ScraperJobData>(
         },
       });
 
-      console.log(`[Job ${job.id}] Completed: ${newCount} new results`);
+      console.log(`✅ [Job ${job.id}] Completed successfully`);
+      console.log(`   Total ads found: ${result.ads.length}`);
+      console.log(`   New results: ${newCount}`);
+      console.log(`   Duration: ${Date.now() - startTime}ms`);
+      console.log(`   Timestamp: ${new Date().toISOString()}`);
 
       // Send push notifications for new results
       if (newCount > 0 && campaign.user.pushSubscription) {
@@ -253,15 +263,29 @@ const worker = new Worker<ScraperJobData>(
 
 // Event handlers
 worker.on('completed', (job) => {
-  console.log(`✅ Job ${job.id} completed`);
+  console.log(`✅ [Worker] Job ${job.id} completed successfully`);
+  console.log(`   Campaign ID: ${job.data.campaignId}, User ID: ${job.data.userId}`);
 });
 
 worker.on('failed', (job, err) => {
-  console.error(`❌ Job ${job?.id} failed:`, err.message);
+  console.error(`❌ [Worker] Job ${job?.id} failed:`, err.message);
+  if (job) {
+    console.error(`   Campaign ID: ${job.data.campaignId}, User ID: ${job.data.userId}`);
+    console.error(`   Error details:`, err);
+  }
 });
 
 worker.on('error', (err) => {
-  console.error('Worker error:', err);
+  console.error('❌ [Worker] Worker error:', err);
+});
+
+worker.on('active', (job) => {
+  console.log(`🔄 [Worker] Job ${job.id} started processing`);
+  console.log(`   Campaign ID: ${job.data.campaignId}`);
+});
+
+worker.on('stalled', (jobId) => {
+  console.warn(`⚠️  [Worker] Job ${jobId} stalled (taking too long)`);
 });
 
 // ============================================
@@ -281,7 +305,7 @@ async function checkPendingCampaigns() {
         },
       },
       include: {
-        user: true,
+        user: { include: { plan: true } },
       },
     });
 
@@ -295,7 +319,6 @@ async function checkPendingCampaigns() {
 
     for (const campaign of pendingCampaigns) {
       // Controlla se esiste già un job per questa campagna nella coda
-      const jobId = `scrape-${campaign.id}`;
       const existingJobs = await queue.getJobs(['waiting', 'active', 'delayed']);
       const hasExistingJob = existingJobs.some(j => 
         j.data.campaignId === campaign.id
@@ -305,6 +328,12 @@ async function checkPendingCampaigns() {
         console.log(`⏭️  [Scheduler] Campaign ${campaign.name} already has a pending job, skipping`);
         continue;
       }
+
+      // Calcola il tempo rimanente fino al nextRunAt
+      const timeUntilRun = campaign.nextRunAt ? campaign.nextRunAt.getTime() - now.getTime() : 0;
+      const frequencyMins = campaign.user?.plan?.frequencyMins || 180;
+      
+      console.log(`📅 [Scheduler] Campaign ${campaign.name}: nextRunAt=${campaign.nextRunAt?.toISOString()}, timeUntilRun=${timeUntilRun}ms (${timeUntilRun/1000/60} min), frequencyMins=${frequencyMins}`);
 
       // Aggiungi job alla coda
       await addScraperJob({

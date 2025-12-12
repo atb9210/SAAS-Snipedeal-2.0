@@ -1,0 +1,66 @@
+# docker-compose.dev.yml - Sviluppo Locale Rapido
+# Solo MySQL e Redis in Docker, Next.js e Worker eseguiti localmente
+# Avvio rapido: ~10-20 secondi invece di 2 minuti
+
+services:
+  # ============================================
+  # DATABASE MYSQL
+  # ============================================
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    ports:
+      - "3306:3306"  # Esposto per connessione locale
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-snipedeal_root_2024}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-snipedeal}
+      MYSQL_USER: ${MYSQL_USER:-snipedeal}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-snipedeal_secret_2024}
+    volumes:
+      - mysql-dev-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - snipedeal-dev-network
+
+  # ============================================
+  # REDIS (BullMQ Job Queue)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"  # Esposto per connessione locale
+    volumes:
+      - redis-dev-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - snipedeal-dev-network
+
+# ============================================
+# VOLUMES PERSISTENTI (separati da produzione)
+# ============================================
+volumes:
+  mysql-dev-data:
+    driver: local
+  redis-dev-data:
+    driver: local
+
+# ============================================
+# NETWORK
+# ============================================
+networks:
+  snipedeal-dev-network:
+    driver: bridge
+
+
