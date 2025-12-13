@@ -111,10 +111,6 @@ COPY --from=builder /app/node_modules/@types/bcryptjs ./node_modules/@types/bcry
 RUN chmod -R +r ./node_modules/prisma 2>/dev/null || true
 RUN chmod +x ./node_modules/.bin/prisma 2>/dev/null || true
 
-# Copia script di entrypoint per migrazioni automatiche
-COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
-
 # Installa Playwright browser (Chromium) per scraping
 RUN npx playwright install chromium --with-deps
 
@@ -134,7 +130,6 @@ ENV HOSTNAME="0.0.0.0"
 # 2. cd /app
 # 3. npx prisma db push --schema=./prisma/schema.prisma
 # 4. npx prisma db seed --schema=./prisma/schema.prisma
-# ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # Avvia direttamente Next.js
 CMD ["node", "server.js"]
