@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Bell, ExternalLink, MapPin, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { platformConfig, formatPrice, formatRelativeDate } from '@/lib/utils';
+import FavoriteButton from '@/components/favorite-button';
 
 interface Result {
   id: string;
@@ -18,6 +19,7 @@ interface Result {
   isNew: boolean;
   createdAt: string;
   campaign: { name: string; platform: string };
+  isFavorited?: boolean; // Add favorite status
 }
 
 interface NotificationsClientProps {
@@ -109,7 +111,15 @@ export function NotificationsClient({ groupedResults }: NotificationsClientProps
                           <h3 className="font-medium text-gray-900 text-sm line-clamp-1">
                             {result.title}
                           </h3>
-                          <ExternalLink className="w-4 h-4 text-gray-300 flex-shrink-0 ml-2" />
+                          <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                            <FavoriteButton
+                              resultId={result.id}
+                              isFavorited={result.isFavorited || false}
+                              size="sm"
+                              className="bg-white shadow-sm"
+                            />
+                            <ExternalLink className="w-4 h-4 text-gray-300" />
+                          </div>
                         </div>
                         
                         <p className="text-primary font-bold mt-0.5">

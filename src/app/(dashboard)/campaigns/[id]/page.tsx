@@ -30,6 +30,16 @@ export default async function CampaignDetailPage({ params }: PageProps) {
       results: {
         orderBy: { createdAt: 'desc' },
         take: 50,
+        include: {
+          favorites: {
+            where: {
+              userId: session.user.id,
+            },
+            select: {
+              id: true,
+            },
+          },
+        },
       },
       _count: { 
         select: { 
@@ -74,6 +84,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
       ...r,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
+      isFavorited: r.favorites && r.favorites.length > 0,
     })),
   };
 

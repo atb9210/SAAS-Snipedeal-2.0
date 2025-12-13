@@ -30,6 +30,7 @@ model User {
   
   // Relazioni
   campaigns        Campaign[]
+  favorites        Favorite[]
   
   // Timestamps
   createdAt        DateTime  @default(now())
@@ -168,6 +169,26 @@ model Result {
   @@index([notified])
   @@index([isNew])
   @@index([createdAt])
+  
+  // Relazioni
+  favorites Favorite[]
+}
+
+// ============================================
+// MODELLI FAVORITES
+// ============================================
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  resultId  String
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  result    Result   @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, resultId]) // Un utente non può preferire lo stesso annuncio più volte
 }
 
 // ============================================

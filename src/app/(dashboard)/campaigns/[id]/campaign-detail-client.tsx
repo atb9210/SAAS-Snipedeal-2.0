@@ -22,6 +22,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { platformConfig, formatPrice, formatRelativeDate } from '@/lib/utils';
+import FavoriteButton from '@/components/favorite-button';
 
 interface Result {
   id: string;
@@ -33,6 +34,7 @@ interface Result {
   isNew: boolean;
   notified: boolean;
   createdAt: string;
+  isFavorited?: boolean; // Add favorite status
 }
 
 interface Campaign {
@@ -309,7 +311,15 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
                     </div>
                   </div>
 
-                  <ExternalLink className="w-4 h-4 text-gray-300 absolute top-4 right-4" />
+                  <div className="flex items-center gap-1 absolute top-4 right-4">
+                    <FavoriteButton
+                      resultId={result.id}
+                      isFavorited={result.isFavorited || false}
+                      size="sm"
+                      className="bg-white shadow-sm"
+                    />
+                    <ExternalLink className="w-4 h-4 text-gray-300" />
+                  </div>
                 </motion.a>
               ))}
             </AnimatePresence>

@@ -5,13 +5,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Search, Bell, User } from 'lucide-react';
+import { Home, Search, Bell, User, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/dashboard', icon: Home, label: 'Home' },
   { href: '/campaigns', icon: Search, label: 'Campagne' },
+  { href: '/favorites', icon: Heart, label: 'Preferiti' },
   { href: '/notifications', icon: Bell, label: 'Notifiche' },
   { href: '/profile', icon: User, label: 'Profilo' },
 ];

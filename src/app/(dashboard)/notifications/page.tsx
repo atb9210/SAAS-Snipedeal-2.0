@@ -27,6 +27,14 @@ export default async function NotificationsPage() {
     },
     include: {
       campaign: { select: { name: true, platform: true } },
+      favorites: {
+        where: {
+          userId: session.user.id,
+        },
+        select: {
+          id: true,
+        },
+      },
     },
     orderBy: { createdAt: 'desc' },
     take: 100,
@@ -37,6 +45,7 @@ export default async function NotificationsPage() {
     ...r,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
+    isFavorited: r.favorites && r.favorites.length > 0,
   }));
 
   // Group by date
