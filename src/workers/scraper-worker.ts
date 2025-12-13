@@ -184,6 +184,12 @@ const worker = new Worker<ScraperJobData>(
 
       console.log(`[Job ${job.id}] Found ${result.ads.length} ads`);
 
+      // Se è il primo run (lastRunAt null), inverti l'ordine dei risultati
+      // così i più recenti vengono salvati per ultimi e appaiono primi nel DB
+      if (!campaign.lastRunAt) {
+        result.ads.reverse();
+      }
+
       // Process results
       let newCount = 0;
       const newResultIds: string[] = [];
