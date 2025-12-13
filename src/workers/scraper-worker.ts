@@ -166,10 +166,9 @@ const worker = new Worker<ScraperJobData>(
       const scraper = createScraper(campaign.platform as Platform);
 
       // Run scraping
-      // Se è il primo run (lastRunAt null), scrape 3 pagine per popolare
-      // Altrimenti solo 1 pagina per prendere i nuovi annunci
-      const maxPages = campaign.lastRunAt ? 1 : 3;
-      console.log(`[Job ${job.id}] Scraping "${campaign.keyword}" on ${campaign.platform} (${maxPages} pages)`);
+      // Sempre 1 pagina per consistenza e semplicità
+      const maxPages = 1;
+      console.log(`[Job ${job.id}] Scraping "${campaign.keyword}" on ${campaign.platform} (${maxPages} page)`);
       
       const result = await scraper.scrape({
         keyword: campaign.keyword,
