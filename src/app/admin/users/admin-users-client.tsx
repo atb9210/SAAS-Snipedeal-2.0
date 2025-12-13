@@ -274,7 +274,7 @@ export function AdminUsersClient({ users: initialUsers, plans }: AdminUsersClien
                   <td className="px-4 py-4">
                     <div className="relative">
                       <button
-                        ref={(el) => (buttonRefs.current[user.id] = el)}
+                        ref={(el) => { buttonRefs.current[user.id] = el; }}
                         onClick={() => handleMenuToggle(user.id)}
                         className="p-2 text-gray-400 hover:text-gray-600"
                       >
