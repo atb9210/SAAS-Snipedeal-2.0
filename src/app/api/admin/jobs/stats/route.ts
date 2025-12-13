@@ -1,7 +1,6 @@
 // src/app/api/admin/jobs/stats/route.ts - API statistiche jobs
-// Timestamp: 2024-12-09
+// Timestamp: 2024-12-12
 
-// Forza rendering dinamico (non SSG durante build)
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
@@ -12,34 +11,33 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     
-    console.log('[Jobs Stats API] Session:', JSON.stringify(session, null, 2));
-
-    // Il ruolo nel DB è uppercase (ADMIN), confronto case-insensitive
     if (!session || session.user.role?.toUpperCase() !== 'ADMIN') {
-      console.log('[Jobs Stats API] Unauthorized - role:', session?.user?.role);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // In un setup reale, queste stats verrebbero da BullMQ
-    // Per ora restituiamo dati mock
     const stats = {
       waiting: 0,
       active: 0,
       completed: 0,
-      failed: 0
+      failed: 0,
+      delayed: 0,
+      paused: 0
     };
 
-    // Se Redis è disponibile, prova a ottenere le stats reali
+    // Ottiene le stats reali da BullMQ/Redis
     try {
       const { getScraperQueue } = await import('@/lib/queue');
       const queue = getScraperQueue();
       const jobCounts = await queue.getJobCounts();
+      
       stats.waiting = jobCounts.waiting || 0;
       stats.active = jobCounts.active || 0;
       stats.completed = jobCounts.completed || 0;
       stats.failed = jobCounts.failed || 0;
+      stats.delayed = jobCounts.delayed || 0;
+      stats.paused = jobCounts.paused || 0;
     } catch (queueError) {
-      console.log('Queue non disponibile, usando stats mock');
+      console.error('Queue error:', queueError);
     }
 
     return NextResponse.json(stats);

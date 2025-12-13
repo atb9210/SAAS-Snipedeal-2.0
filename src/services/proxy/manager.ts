@@ -1,5 +1,5 @@
 // src/services/proxy/manager.ts - Proxy Manager centralizzato
-// Timestamp: 2024-12-09
+// Timestamp: 2024-12-12
 
 import prisma from '../../lib/prisma';
 import {
@@ -21,19 +21,24 @@ const providerFactories: Record<string, (config: ProviderConfig) => ProxyProvide
   // oxylabs: (config) => new OxylabsProvider(config as OxylabsConfig),
 };
 
+// Cache TTL: 5 minuti tra ogni reload dal database
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 /**
  * ProxyManager
  * 
  * Gestisce tutti i provider proxy configurati.
- * Supporta round-robin, fallback e logging.
+ * Supporta round-robin, fallback, logging e cache con TTL.
  */
 export class ProxyManager {
   private providers: Map<string, ProxyProviderService> = new Map();
   private roundRobinIndex: number = 0;
   private initialized: boolean = false;
+  private lastLoadTime: number = 0;
 
   /**
    * Inizializza il manager caricando i provider dal database
+   * Usa cache TTL per evitare query ripetute
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -69,11 +74,19 @@ export class ProxyManager {
       }
 
       this.initialized = true;
+      this.lastLoadTime = Date.now();
       console.log(`[ProxyManager] Initialized with ${this.providers.size} provider(s)`);
     } catch (error) {
       console.error('[ProxyManager] Failed to initialize:', error);
       throw error;
     }
+  }
+
+  /**
+   * Verifica se la cache è scaduta e serve un reload
+   */
+  private isCacheExpired(): boolean {
+    return Date.now() - this.lastLoadTime > CACHE_TTL_MS;
   }
 
   /**
@@ -86,6 +99,7 @@ export class ProxyManager {
 
   /**
    * Ottiene un proxy URL (round-robin tra provider abilitati)
+   * Usa cache TTL per evitare query ripetute al database
    * @param country Paese per il proxy
    * @param preferHttp Se true, preferisce HTTP invece di SOCKS5
    */
@@ -93,15 +107,15 @@ export class ProxyManager {
     await this.initialize();
 
     if (this.providers.size === 0) {
-      // Se non ci sono provider ma siamo già inizializzati, prova a ricaricare
-      // (potrebbe essere stato aggiunto un proxy dopo l'inizializzazione)
-      if (this.initialized) {
-        console.log('[ProxyManager] No providers found, reloading from database...');
+      // Se non ci sono provider, ricarica SOLO se la cache è scaduta
+      // Evita query ripetute al database quando non ci sono proxy configurati
+      if (this.initialized && this.isCacheExpired()) {
+        console.log('[ProxyManager] Cache expired, reloading from database...');
         await this.reload();
       }
       
       if (this.providers.size === 0) {
-        console.warn('[ProxyManager] No proxy providers available');
+        // Log solo una volta ogni tanto per non sporcare i log
         return null;
       }
     }

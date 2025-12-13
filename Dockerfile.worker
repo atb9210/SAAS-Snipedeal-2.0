@@ -1,14 +1,15 @@
 # Dockerfile.worker - Worker per job scraping SnipeDeal 2.0
 # Ottimizzato per Dokploy Production
-# Timestamp: 2024-12-09
+# Timestamp: 2024-12-12
 
 FROM node:20-slim
 
-# Installa dipendenze sistema per Playwright + curl per health checks
+# Installa dipendenze sistema per Playwright + redis-cli per health checks
 RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
     curl \
+    redis-tools \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \

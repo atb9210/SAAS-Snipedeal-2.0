@@ -1,6 +1,6 @@
 // src/workers/scraper-worker.ts - Background worker per job di scraping
 // Eseguire con: npm run worker
-// Timestamp: 2024-12-09
+// Timestamp: 2024-12-12
 
 import { Worker, Job } from 'bullmq';
 import { PrismaClient, Platform, JobStatus } from '@prisma/client';
@@ -12,6 +12,84 @@ import { sendNewResultsNotification, PushSubscription } from '../lib/web-push';
 
 const prisma = new PrismaClient();
 const SCHEDULER_INTERVAL_MS = 60000; // Check ogni 60 secondi
+const HEARTBEAT_INTERVAL_MS = 30000; // Heartbeat ogni 30 secondi
+
+// ============================================
+// WORKER METRICS - Tracking in-memory
+// ============================================
+const workerStartTime = Date.now();
+let jobsProcessed = 0;
+let jobsSucceeded = 0;
+let jobsFailed = 0;
+let currentJobId: string | null = null;
+let lastJobDuration = 0;
+let totalJobDuration = 0;
+
+// Redis keys for worker status
+const REDIS_KEYS = {
+  HEARTBEAT: 'worker:heartbeat',
+  METRICS: 'worker:metrics',
+  STATUS: 'worker:status',
+} as const;
+
+/**
+ * Scrive heartbeat e metriche su Redis
+ * Chiamato ogni 30 secondi per indicare che il worker è vivo
+ */
+async function writeHeartbeat(): Promise<void> {
+  try {
+    const redis = getRedis();
+    const now = Date.now();
+    const uptime = Math.floor((now - workerStartTime) / 1000);
+    const memUsage = process.memoryUsage();
+    
+    // Heartbeat con timestamp
+    await redis.set(REDIS_KEYS.HEARTBEAT, now.toString(), 'EX', 120); // Scade dopo 2 minuti
+    
+    // Stato corrente
+    await redis.set(REDIS_KEYS.STATUS, currentJobId ? 'processing' : 'idle', 'EX', 120);
+    
+    // Metriche complete
+    const metrics = {
+      timestamp: now,
+      uptime,
+      uptimeFormatted: formatUptime(uptime),
+      jobsProcessed,
+      jobsSucceeded,
+      jobsFailed,
+      errorRate: jobsProcessed > 0 ? ((jobsFailed / jobsProcessed) * 100).toFixed(2) : '0.00',
+      avgJobDuration: jobsProcessed > 0 ? Math.round(totalJobDuration / jobsProcessed) : 0,
+      lastJobDuration,
+      currentJob: currentJobId,
+      memory: {
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024), // MB
+        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024), // MB
+        rss: Math.round(memUsage.rss / 1024 / 1024), // MB
+      },
+      pid: process.pid,
+    };
+    
+    await redis.set(REDIS_KEYS.METRICS, JSON.stringify(metrics), 'EX', 120);
+    
+  } catch (error) {
+    console.error('[Heartbeat] Failed to write heartbeat:', error);
+  }
+}
+
+/**
+ * Formatta uptime in modo leggibile
+ */
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  
+  if (days > 0) return `${days}d ${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
+  if (mins > 0) return `${mins}m ${secs}s`;
+  return `${secs}s`;
+}
 
 console.log('🚀 Starting Scraper Worker...');
 
@@ -194,10 +272,15 @@ const worker = new Worker<ScraperJobData>(
         },
       });
 
+      // Track job duration for metrics
+      const jobDuration = Date.now() - startTime;
+      lastJobDuration = jobDuration;
+      totalJobDuration += jobDuration;
+      
       console.log(`✅ [Job ${job.id}] Completed successfully`);
       console.log(`   Total ads found: ${result.ads.length}`);
       console.log(`   New results: ${newCount}`);
-      console.log(`   Duration: ${Date.now() - startTime}ms`);
+      console.log(`   Duration: ${jobDuration}ms`);
       console.log(`   Timestamp: ${new Date().toISOString()}`);
 
       // Send push notifications for new results
@@ -261,13 +344,19 @@ const worker = new Worker<ScraperJobData>(
   }
 );
 
-// Event handlers
+// Event handlers con tracking metriche
 worker.on('completed', (job) => {
+  jobsProcessed++;
+  jobsSucceeded++;
+  currentJobId = null;
   console.log(`✅ [Worker] Job ${job.id} completed successfully`);
   console.log(`   Campaign ID: ${job.data.campaignId}, User ID: ${job.data.userId}`);
 });
 
 worker.on('failed', (job, err) => {
+  jobsProcessed++;
+  jobsFailed++;
+  currentJobId = null;
   console.error(`❌ [Worker] Job ${job?.id} failed:`, err.message);
   if (job) {
     console.error(`   Campaign ID: ${job.data.campaignId}, User ID: ${job.data.userId}`);
@@ -280,6 +369,7 @@ worker.on('error', (err) => {
 });
 
 worker.on('active', (job) => {
+  currentJobId = job.id || null;
   console.log(`🔄 [Worker] Job ${job.id} started processing`);
   console.log(`   Campaign ID: ${job.data.campaignId}`);
 });
@@ -350,6 +440,7 @@ async function checkPendingCampaigns() {
 
 // Avvia scheduler
 let schedulerInterval: NodeJS.Timeout;
+let heartbeatInterval: NodeJS.Timeout;
 
 function startScheduler() {
   console.log(`📅 [Scheduler] Starting campaign scheduler (interval: ${SCHEDULER_INTERVAL_MS / 1000}s)`);
@@ -361,25 +452,48 @@ function startScheduler() {
   schedulerInterval = setInterval(checkPendingCampaigns, SCHEDULER_INTERVAL_MS);
 }
 
-// Avvia lo scheduler dopo l'inizializzazione del proxy
-setTimeout(startScheduler, 3000);
+function startHeartbeat() {
+  console.log(`💓 [Heartbeat] Starting worker heartbeat (interval: ${HEARTBEAT_INTERVAL_MS / 1000}s)`);
+  
+  // Scrivi subito il primo heartbeat
+  writeHeartbeat();
+  
+  // Poi scrivi periodicamente
+  heartbeatInterval = setInterval(writeHeartbeat, HEARTBEAT_INTERVAL_MS);
+}
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('Received SIGTERM, shutting down...');
+// Avvia scheduler e heartbeat dopo l'inizializzazione del proxy
+setTimeout(() => {
+  startScheduler();
+  startHeartbeat();
+}, 3000);
+
+// Graceful shutdown con cleanup Redis
+async function gracefulShutdown(signal: string) {
+  console.log(`Received ${signal}, shutting down...`);
+  
+  // Stop intervals
   if (schedulerInterval) clearInterval(schedulerInterval);
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
+  
+  // Pulisci chiavi Redis per indicare che il worker è offline
+  try {
+    const redis = getRedis();
+    await redis.del(REDIS_KEYS.HEARTBEAT);
+    await redis.set(REDIS_KEYS.STATUS, 'offline', 'EX', 300);
+    await redis.del(REDIS_KEYS.METRICS);
+    console.log('[Heartbeat] Cleaned up Redis keys');
+  } catch (error) {
+    console.error('[Heartbeat] Failed to cleanup Redis:', error);
+  }
+  
   await worker.close();
   await prisma.$disconnect();
   process.exit(0);
-});
+}
 
-process.on('SIGINT', async () => {
-  console.log('Received SIGINT, shutting down...');
-  if (schedulerInterval) clearInterval(schedulerInterval);
-  await worker.close();
-  await prisma.$disconnect();
-  process.exit(0);
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 console.log('✅ Scraper Worker ready and listening for jobs');
 

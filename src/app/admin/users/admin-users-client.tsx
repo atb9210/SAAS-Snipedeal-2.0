@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -41,6 +41,8 @@ export function AdminUsersClient({ users: initialUsers, plans }: AdminUsersClien
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'admin' | 'user'>('all');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<Record<string, { top: number; right: number; position: 'bottom' | 'top' }>>({});
+  const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
@@ -54,6 +56,50 @@ export function AdminUsersClient({ users: initialUsers, plans }: AdminUsersClien
 
     return matchesSearch && matchesFilter;
   });
+
+  const handleMenuToggle = (userId: string) => {
+    if (menuOpen === userId) {
+      setMenuOpen(null);
+      return;
+    }
+
+    setMenuOpen(userId);
+    
+    // Calcola la posizione del dropdown dopo che il DOM è aggiornato
+    setTimeout(() => {
+      const button = buttonRefs.current[userId];
+      if (button) {
+        const rect = button.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const dropdownHeight = 200; // Altezza approssimativa del dropdown
+        
+        // Calcola la posizione right (distanza dal bordo destro dello schermo)
+        const right = window.innerWidth - rect.right;
+        
+        // Se non c'è spazio sotto ma c'è spazio sopra, posiziona verso l'alto
+        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+          setMenuPosition(prev => ({ 
+            ...prev, 
+            [userId]: { 
+              top: rect.top - dropdownHeight - 4, 
+              right,
+              position: 'top' 
+            } 
+          }));
+        } else {
+          setMenuPosition(prev => ({ 
+            ...prev, 
+            [userId]: { 
+              top: rect.bottom + 4, 
+              right,
+              position: 'bottom' 
+            } 
+          }));
+        }
+      }
+    }, 0);
+  };
 
   const handleUpdatePlan = async (userId: string, planId: string) => {
     try {
@@ -74,6 +120,51 @@ export function AdminUsersClient({ users: initialUsers, plans }: AdminUsersClien
     }
     setMenuOpen(null);
   };
+
+  // Aggiorna la posizione del dropdown durante lo scroll
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const updatePosition = () => {
+      const userId = menuOpen;
+      const button = buttonRefs.current[userId];
+      if (button) {
+        const rect = button.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        const dropdownHeight = 200;
+        const right = window.innerWidth - rect.right;
+        
+        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+          setMenuPosition(prev => ({ 
+            ...prev, 
+            [userId]: { 
+              top: rect.top - dropdownHeight - 4, 
+              right,
+              position: 'top' 
+            } 
+          }));
+        } else {
+          setMenuPosition(prev => ({ 
+            ...prev, 
+            [userId]: { 
+              top: rect.bottom + 4, 
+              right,
+              position: 'bottom' 
+            } 
+          }));
+        }
+      }
+    };
+
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [menuOpen]);
 
   return (
     <div className="p-4 lg:p-8">
@@ -183,14 +274,21 @@ export function AdminUsersClient({ users: initialUsers, plans }: AdminUsersClien
                   <td className="px-4 py-4">
                     <div className="relative">
                       <button
-                        onClick={() => setMenuOpen(menuOpen === user.id ? null : user.id)}
+                        ref={(el) => (buttonRefs.current[user.id] = el)}
+                        onClick={() => handleMenuToggle(user.id)}
                         className="p-2 text-gray-400 hover:text-gray-600"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
 
-                      {menuOpen === user.id && (
-                        <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-100 py-2 z-10 min-w-[180px]">
+                      {menuOpen === user.id && menuPosition[user.id] && (
+                        <div 
+                          className="fixed bg-white rounded-lg shadow-lg border border-gray-100 py-2 z-50 min-w-[180px]"
+                          style={{
+                            top: `${menuPosition[user.id].top}px`,
+                            right: `${menuPosition[user.id].right}px`
+                          }}
+                        >
                           <p className="px-4 py-1 text-xs text-gray-500 uppercase">
                             Cambia Piano
                           </p>
@@ -226,7 +324,7 @@ export function AdminUsersClient({ users: initialUsers, plans }: AdminUsersClien
       {/* Click outside to close menu */}
       {menuOpen && (
         <div 
-          className="fixed inset-0 z-0" 
+          className="fixed inset-0 z-40" 
           onClick={() => setMenuOpen(null)} 
         />
       )}

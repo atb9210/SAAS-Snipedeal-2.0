@@ -112,6 +112,14 @@ services:
       - NEXT_PUBLIC_VAPID_PUBLIC_KEY=${NEXT_PUBLIC_VAPID_PUBLIC_KEY}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
       - VAPID_EMAIL=${VAPID_EMAIL:-mailto:admin@snipedeal.it}
+    healthcheck:
+      # Verifica che il worker scriva heartbeat su Redis (chiave worker:heartbeat)
+      # Il worker scrive ogni 30s, chiave scade dopo 2min, check ogni 60s
+      test: ["CMD-SHELL", "redis-cli -h redis GET worker:heartbeat | grep -q '[0-9]'"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
     depends_on:
       mysql:
         condition: service_healthy

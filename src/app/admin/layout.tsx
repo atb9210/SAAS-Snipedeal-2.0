@@ -24,7 +24,7 @@ export default async function AdminLayout({
       <AdminSidebar />
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64">
+      <main className="flex-1 lg:ml-64 max-w-full overflow-x-hidden pt-16 lg:pt-0">
         {children}
       </main>
     </div>
