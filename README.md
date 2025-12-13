@@ -45,6 +45,12 @@ Vedi `context chat/` per dettagli completi sulla migrazione e fix implementati.
 - **Scraping**: Playwright
 - **Container**: Docker + docker-compose
 
+## 📚 Documentazione
+
+- **Deployment Dokploy**: `docs/deployment/dokploy-services.md` (servizi separati)
+- **Deployment Compose**: `docs/deployment/dokploy-compose.md` (stack unico)
+- **Sviluppo locale**: vedi comandi qui sotto
+
 ## Requisiti
 
 - Node.js 20+
@@ -60,10 +66,13 @@ cd snipedeal-pwa
 npm install
 ```
 
-### 2. Avvia i container Docker
+### 2. Avvia i container Docker (dev locale)
 
 ```bash
-npm run docker:up
+# Solo servizi MySQL e Redis per sviluppo locale
+npm run dev:services
+# oppure
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 Questo avvia:
@@ -121,9 +130,10 @@ npm run db:seed      # Seed dati iniziali
 npm run db:studio    # Apri Prisma Studio
 
 # Docker
-npm run docker:up    # Avvia container
-npm run docker:down  # Ferma container
-npm run docker:build # Build immagini
+npm run dev:services    # Avvia MySQL e Redis per sviluppo
+npm run dev:services:down  # Ferma MySQL e Redis
+docker compose -f docker-compose.dev.yml up -d    # Sviluppo locale
+docker compose -f docker-compose.dokploy.yml up -d  # Deployment completo
 
 # Worker (scraping)
 npm run worker       # Avvia worker di scraping
@@ -143,8 +153,6 @@ snipedeal-pwa/
 │   ├── lib/                    # Utilities, Prisma, Auth
 │   ├── services/               # Scrapers
 │   │   └── scrapers/
-│   │       ├── base.ts         # Interface base
-│   │       └── subito.ts       # Scraper Subito.it
 │   ├── hooks/                  # React hooks
 │   └── workers/                # Background jobs
 ├── prisma/
@@ -153,8 +161,15 @@ snipedeal-pwa/
 ├── public/
 │   ├── manifest.json           # PWA manifest
 │   └── icons/                  # PWA icons
-├── docker-compose.yml
-├── Dockerfile
+├── docs/
+│   └── deployment/             # Guide deployment
+│       ├── dokploy-services.md
+│       └── dokploy-compose.md
+├── docker-compose.dev.yml      # Sviluppo locale (MySQL + Redis)
+├── docker-compose.dokploy.yml  # Deployment completo
+├── Dockerfile                  # Build app
+├── Dockerfile.worker           # Build worker
+├── env.local.example           # Template variabili ambiente
 └── package.json
 ```
 
