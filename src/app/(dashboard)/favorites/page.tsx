@@ -48,9 +48,11 @@ export default async function FavoritesPage() {
   // Format data for client
   const formattedFavorites = favorites.map(fav => ({
     id: fav.id,
-    createdAt: fav.createdAt,
+    createdAt: fav.createdAt.toISOString(),
     result: {
       ...fav.result,
+      createdAt: fav.result.createdAt.toISOString(),
+      updatedAt: fav.result.updatedAt.toISOString(),
       isFavorited: true, // All items in favorites are favorited
     },
   }));
