@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -69,16 +69,60 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
 
   const handleToggle = async () => {
     setIsToggling(true);
+
+    // Ottimistic update - aggiorna subito l'UI
+    const newStatus = !isActive;
+    setIsActive(newStatus);
+
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}/toggle`, { method: 'POST' });
-      if (res.ok) {
-        setIsActive(!isActive);
+
+      if (!res.ok) {
+        // Se fallisce, ripristina lo stato originale
+        setIsActive(!newStatus);
+        console.error('Failed to toggle campaign');
+      } else {
+        // Aggiorna con i dati dal server
+        const updatedCampaign = await res.json();
+        setIsActive(updatedCampaign.isActive);
+
+        // Salva nel sessionStorage che c'è stato un cambiamento
+        sessionStorage.setItem('campaignUpdated', JSON.stringify({
+          id: campaign.id,
+          isActive: updatedCampaign.isActive,
+          timestamp: Date.now()
+        }));
+
+        // Notifica altri componenti del cambiamento
+        window.dispatchEvent(new CustomEvent('campaignToggled', {
+          detail: {
+            id: campaign.id,
+            isActive: updatedCampaign.isActive
+          }
+        }));
       }
     } catch (error) {
+      // Ripristina lo stato in caso di errore
+      setIsActive(!newStatus);
       console.error('Error toggling:', error);
     }
     setIsToggling(false);
   };
+
+  // Ascolta cambiamenti da altri componenti
+  useEffect(() => {
+    const handleCampaignToggle = (event: CustomEvent) => {
+      if (event.detail.id === campaign.id) {
+        setIsActive(event.detail.isActive);
+      }
+    };
+
+    window.addEventListener('campaignToggled', handleCampaignToggle as EventListener);
+
+    return () => {
+      window.removeEventListener('campaignToggled', handleCampaignToggle as EventListener);
+    };
+  }, [campaign.id]);
 
   const filteredResults = filter === 'new' 
     ? results.filter(r => r.isNew)

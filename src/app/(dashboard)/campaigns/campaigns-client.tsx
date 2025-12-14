@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -55,14 +55,36 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
 
   const handleToggle = async (id: string) => {
     try {
+      // Trova la campagna corrente per il suo stato
+      const currentCampaign = campaigns.find(c => c.id === id);
+      if (!currentCampaign) return;
+
+      // Ottimistic update - aggiorna subito l'UI
+      setCampaigns(campaigns.map(c =>
+        c.id === id ? { ...c, isActive: !c.isActive } : c
+      ));
+
       const res = await fetch(`/api/campaigns/${id}/toggle`, { method: 'POST' });
-      if (res.ok) {
-        setCampaigns(campaigns.map(c => 
-          c.id === id ? { ...c, isActive: !c.isActive } : c
+
+      if (!res.ok) {
+        // Se fallisce, ripristina lo stato originale
+        setCampaigns(campaigns.map(c =>
+          c.id === id ? { ...c, isActive: currentCampaign.isActive } : c
+        ));
+        console.error('Failed to toggle campaign');
+      } else {
+        // Aggiorna con i dati dal server per assicurare consistenza
+        const updatedCampaign = await res.json();
+        setCampaigns(campaigns.map(c =>
+          c.id === id ? { ...c, ...updatedCampaign } : c
         ));
       }
     } catch (error) {
       console.error('Error toggling campaign:', error);
+      // Ripristina lo stato in caso di errore
+      setCampaigns(campaigns.map(c =>
+        c.id === id ? { ...c, isActive: c.isActive } : c
+      ));
     }
     setMenuOpen(null);
   };
@@ -84,6 +106,86 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
   };
 
   const canCreateMore = campaigns.length < planLimits.maxCampaigns;
+
+  // Ascolta cambiamenti da altri componenti
+  useEffect(() => {
+    const handleCampaignToggle = (event: CustomEvent) => {
+      const { id, isActive } = event.detail;
+      setCampaigns(prev => prev.map(c =>
+        c.id === id ? { ...c, isActive } : c
+      ));
+    };
+
+    window.addEventListener('campaignToggled', handleCampaignToggle as EventListener);
+
+    return () => {
+      window.removeEventListener('campaignToggled', handleCampaignToggle as EventListener);
+    };
+  }, []);
+
+  // Refresh periodico e quando la pagina diventa visibile
+  useEffect(() => {
+    const refreshCampaigns = async () => {
+      try {
+        const res = await fetch('/api/campaigns');
+        if (res.ok) {
+          const updatedCampaigns = await res.json();
+          setCampaigns(updatedCampaigns);
+        }
+      } catch (error) {
+        console.error('Error refreshing campaigns:', error);
+      }
+    };
+
+    // Refresh immediato al mount
+    refreshCampaigns();
+
+    // Controlla se c'è un aggiornamento nel sessionStorage
+    const checkSessionStorage = () => {
+      try {
+        const campaignUpdate = sessionStorage.getItem('campaignUpdated');
+        if (campaignUpdate) {
+          const { id, timestamp } = JSON.parse(campaignUpdate);
+          // Se l'aggiornamento è recente (ultimi 10 secondi), forza refresh
+          if (Date.now() - timestamp < 10000) {
+            refreshCampaigns();
+            sessionStorage.removeItem('campaignUpdated'); // Pulisci dopo l'uso
+          }
+        }
+      } catch (error) {
+        console.error('Error checking sessionStorage:', error);
+      }
+    };
+
+    // Refresh periodico
+    const interval = setInterval(refreshCampaigns, 30000); // Ogni 30 secondi
+
+    // Refresh quando la pagina torna visibile (es. da router.back())
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSessionStorage(); // Controlla sessionStorage prima di fare refresh
+        refreshCampaigns();
+      }
+    };
+
+    // Refresh quando la finestra ottiene focus
+    const handleFocus = () => {
+      checkSessionStorage(); // Controlla sessionStorage prima di fare refresh
+      refreshCampaigns();
+    };
+
+    // Controlla subito al mount
+    checkSessionStorage();
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   return (
     <div className="px-4 pt-safe">
