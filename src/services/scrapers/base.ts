@@ -19,6 +19,7 @@ export interface ScrapeOptions {
   maxPrice?: number | null;
   region?: string | null;
   maxPages?: number;
+  exactMatch?: boolean;  // Se true, cerca solo nel titolo (qso=true per Subito)
 }
 
 export interface ScrapeResult {

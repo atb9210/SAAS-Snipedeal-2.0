@@ -34,13 +34,15 @@ export class SubitoScraper extends BaseScraper {
   private browser: Browser | null = null;
   private proxy: ProxyUrl | null = null;
   private proxyProviderId: string | null = null;
+  private exactMatch: boolean = false;
 
   constructor() {
     super('SubitoScraper', 'https://www.subito.it');
   }
 
   async scrape(options: ScrapeOptions): Promise<ScrapeResult> {
-    const { keyword, minPrice, maxPrice, region, maxPages = 3 } = options;
+    const { keyword, minPrice, maxPrice, region, maxPages = 3, exactMatch = false } = options;
+    this.exactMatch = exactMatch;
     
     this.log(`Starting scrape for: "${keyword}"${region ? ` in ${region}` : ''}`);
 
@@ -323,8 +325,12 @@ export class SubitoScraper extends BaseScraper {
     const params = new URLSearchParams({
       q: keyword,
       order: 'datedesc', // Ordina per più recenti (IMPORTANTE!)
-      qso: 'true', // Ricerca solo nel titolo per risultati più precisi
     });
+
+    // Aggiungi qso=true solo se exactMatch è attivo (ricerca solo nel titolo)
+    if (this.exactMatch) {
+      params.set('qso', 'true');
+    }
 
     if (page > 1) {
       params.set('o', page.toString());

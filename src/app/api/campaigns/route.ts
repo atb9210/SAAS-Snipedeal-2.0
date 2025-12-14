@@ -16,6 +16,10 @@ const createCampaignSchema = z.object({
   minPrice: z.number().min(0).nullable().optional(),
   maxPrice: z.number().min(0).nullable().optional(),
   region: z.string().nullable().optional(),
+  // Filtri avanzati
+  exactMatch: z.boolean().optional().default(false),
+  includeKeywords: z.string().nullable().optional(),
+  excludeKeywords: z.string().nullable().optional(),
 });
 
 // GET - Lista campagne utente
@@ -124,6 +128,9 @@ export async function POST(request: NextRequest) {
         minPrice: data.minPrice || null,
         maxPrice: data.maxPrice || null,
         region: data.region || null,
+        exactMatch: data.exactMatch || false,
+        includeKeywords: data.includeKeywords || null,
+        excludeKeywords: data.excludeKeywords || null,
         nextRunAt,
         isActive: true,
       },

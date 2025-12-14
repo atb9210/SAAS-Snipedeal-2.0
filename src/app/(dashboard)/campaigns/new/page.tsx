@@ -26,6 +26,9 @@ interface FormData {
   minPrice: string;
   maxPrice: string;
   region: string;
+  exactMatch: boolean;
+  includeKeywords: string;
+  excludeKeywords: string;
 }
 
 export default function NewCampaignPage() {
@@ -41,9 +44,12 @@ export default function NewCampaignPage() {
     minPrice: '',
     maxPrice: '',
     region: '',
+    exactMatch: false,
+    includeKeywords: '',
+    excludeKeywords: '',
   });
 
-  const updateForm = (field: keyof FormData, value: string) => {
+  const updateForm = (field: keyof FormData, value: string | boolean) => {
     setFormData({ ...formData, [field]: value });
   };
 
@@ -91,6 +97,9 @@ export default function NewCampaignPage() {
           minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
           maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : null,
           region: formData.region || null,
+          exactMatch: formData.exactMatch,
+          includeKeywords: formData.includeKeywords || null,
+          excludeKeywords: formData.excludeKeywords || null,
         }),
       });
 
@@ -264,6 +273,33 @@ export default function NewCampaignPage() {
               </div>
 
               <div className="space-y-6">
+                {/* Exact Match Toggle */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Ricerca esatta nel titolo
+                      </label>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Cerca solo annunci con la keyword esatta nel titolo
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateForm('exactMatch', !formData.exactMatch)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        formData.exactMatch ? 'bg-primary' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.exactMatch ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
                 {/* Price Range */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -309,6 +345,40 @@ export default function NewCampaignPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Include Keywords */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Includi parole chiave
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.includeKeywords}
+                    onChange={(e) => updateForm('includeKeywords', e.target.value)}
+                    placeholder="es. originale, nuovo (separate da virgola)"
+                    className="input"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Mostra solo annunci che contengono almeno una di queste parole
+                  </p>
+                </div>
+
+                {/* Exclude Keywords */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Escludi parole chiave
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.excludeKeywords}
+                    onChange={(e) => updateForm('excludeKeywords', e.target.value)}
+                    placeholder="es. rotto, difettoso (separate da virgola)"
+                    className="input"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Nascondi annunci che contengono queste parole
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -386,6 +456,24 @@ export default function NewCampaignPage() {
                         <span className="font-medium">{formData.region}</span>
                       </div>
                     )}
+                    {formData.exactMatch && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Ricerca esatta</span>
+                        <span className="font-medium text-primary">Attiva</span>
+                      </div>
+                    )}
+                    {formData.includeKeywords && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Includi</span>
+                        <span className="font-medium text-green-600">{formData.includeKeywords}</span>
+                      </div>
+                    )}
+                    {formData.excludeKeywords && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Escludi</span>
+                        <span className="font-medium text-red-600">{formData.excludeKeywords}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -400,8 +488,8 @@ export default function NewCampaignPage() {
         </AnimatePresence>
       </div>
 
-      {/* Footer with Buttons */}
-      <div className="p-4 border-t border-gray-100 pb-safe">
+      {/* Footer with Buttons - sticky sopra la bottom nav */}
+      <div className="sticky bottom-0 p-4 border-t border-gray-100 bg-white pb-20">
         <div className="flex gap-3">
           {step > 1 && (
             <button

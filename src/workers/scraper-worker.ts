@@ -168,7 +168,15 @@ const worker = new Worker<ScraperJobData>(
       // Run scraping
       // Sempre 1 pagina per consistenza e semplicità
       const maxPages = 1;
+      // Type assertion per i nuovi campi (saranno disponibili dopo prisma db push)
+      const campaignWithFilters = campaign as typeof campaign & {
+        exactMatch?: boolean;
+        includeKeywords?: string | null;
+        excludeKeywords?: string | null;
+      };
+      
       console.log(`[Job ${job.id}] Scraping "${campaign.keyword}" on ${campaign.platform} (${maxPages} page)`);
+      console.log(`[Job ${job.id}] Filters: exactMatch=${campaignWithFilters.exactMatch || false}, include="${campaignWithFilters.includeKeywords || ''}", exclude="${campaignWithFilters.excludeKeywords || ''}"`);
       
       const result = await scraper.scrape({
         keyword: campaign.keyword,
@@ -176,7 +184,37 @@ const worker = new Worker<ScraperJobData>(
         maxPrice: campaign.maxPrice,
         region: campaign.region,
         maxPages,
+        exactMatch: campaignWithFilters.exactMatch || false,
       });
+
+      // Applica filtri include/exclude sui risultati
+      let filteredAds = result.ads;
+      
+      if (campaignWithFilters.includeKeywords) {
+        const includeWords = campaignWithFilters.includeKeywords.split(',').map((w: string) => w.trim().toLowerCase()).filter((w: string) => w);
+        if (includeWords.length > 0) {
+          filteredAds = filteredAds.filter(ad => {
+            const title = ad.title.toLowerCase();
+            return includeWords.some((word: string) => title.includes(word));
+          });
+          console.log(`[Job ${job.id}] After include filter: ${filteredAds.length} ads (was ${result.ads.length})`);
+        }
+      }
+      
+      if (campaignWithFilters.excludeKeywords) {
+        const excludeWords = campaignWithFilters.excludeKeywords.split(',').map((w: string) => w.trim().toLowerCase()).filter((w: string) => w);
+        if (excludeWords.length > 0) {
+          const beforeCount = filteredAds.length;
+          filteredAds = filteredAds.filter(ad => {
+            const title = ad.title.toLowerCase();
+            return !excludeWords.some((word: string) => title.includes(word));
+          });
+          console.log(`[Job ${job.id}] After exclude filter: ${filteredAds.length} ads (was ${beforeCount})`);
+        }
+      }
+      
+      // Usa i risultati filtrati
+      result.ads = filteredAds;
 
       if (!result.success) {
         throw new Error(result.error || 'Scraping failed');

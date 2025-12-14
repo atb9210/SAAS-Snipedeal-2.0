@@ -96,6 +96,11 @@ model Campaign {
   maxPrice    Float?
   region      String?   // Regione italiana (es. "Lombardia")
   
+  // Filtri avanzati di ricerca
+  exactMatch      Boolean  @default(false)  // Se true, usa qso=true (ricerca solo nel titolo)
+  includeKeywords String?  @db.Text         // Parole da includere (separate da virgola)
+  excludeKeywords String?  @db.Text         // Parole da escludere (separate da virgola)
+  
   // Stato e scheduling
   isActive    Boolean   @default(true)
   lastRunAt   DateTime?
