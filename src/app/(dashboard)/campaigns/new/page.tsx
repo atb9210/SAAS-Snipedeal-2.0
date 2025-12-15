@@ -229,7 +229,7 @@ export default function NewCampaignPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {Object.entries(platformConfig).map(([key, config]) => {
-                      const isActive = key === 'SUBITO' || key === 'EBAY';
+                      const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED';
                       const isSelected = formData.platform === key;
                       
                       return (
