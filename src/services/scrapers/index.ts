@@ -1,8 +1,9 @@
 // src/services/scrapers/index.ts - Scraper Factory
-// Timestamp: 2024-12-09
+// Timestamp: 2024-12-15
 
 import { BaseScraper, ScrapeOptions, ScrapeResult } from './base';
 import { SubitoScraper } from './subito';
+import { EbayScraper } from './ebay';
 
 export type Platform = 'SUBITO' | 'EBAY' | 'VINTED' | 'WALLAPOP' | 'FACEBOOK';
 
@@ -12,6 +13,7 @@ export function createScraper(platform: Platform): BaseScraper {
     case 'SUBITO':
       return new SubitoScraper();
     case 'EBAY':
+      return new EbayScraper();
     case 'VINTED':
     case 'WALLAPOP':
     case 'FACEBOOK':
@@ -23,7 +25,7 @@ export function createScraper(platform: Platform): BaseScraper {
 
 // Check if platform is supported
 export function isPlatformSupported(platform: Platform): boolean {
-  return platform === 'SUBITO';
+  return ['SUBITO', 'EBAY'].includes(platform);
 }
 
 // Re-export types

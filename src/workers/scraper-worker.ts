@@ -168,21 +168,32 @@ const worker = new Worker<ScraperJobData>(
       // Run scraping
       // Sempre 1 pagina per consistenza e semplicità
       const maxPages = 1;
-      // Type assertion per i nuovi campi (saranno disponibili dopo prisma db push)
+      // Type assertion per i nuovi campi
       const campaignWithFilters = campaign as typeof campaign & {
         exactMatch?: boolean;
         includeKeywords?: string | null;
         excludeKeywords?: string | null;
+        platformFilters?: Record<string, unknown> | null;
       };
       
       console.log(`[Job ${job.id}] Scraping "${campaign.keyword}" on ${campaign.platform} (${maxPages} page)`);
       console.log(`[Job ${job.id}] Filters: exactMatch=${campaignWithFilters.exactMatch || false}, include="${campaignWithFilters.includeKeywords || ''}", exclude="${campaignWithFilters.excludeKeywords || ''}"`);
       
+      // Determina la region da passare allo scraper
+      // Per Subito: usa campaign.region
+      // Per eBay: usa platformFilters.location
+      let scrapeRegion = campaign.region;
+      if (campaign.platform === 'EBAY' && campaignWithFilters.platformFilters) {
+        const ebayFilters = campaignWithFilters.platformFilters as { location?: string };
+        scrapeRegion = ebayFilters.location || null;
+        console.log(`[Job ${job.id}] eBay location filter: ${scrapeRegion || 'worldwide'}`);
+      }
+      
       const result = await scraper.scrape({
         keyword: campaign.keyword,
         minPrice: campaign.minPrice,
         maxPrice: campaign.maxPrice,
-        region: campaign.region,
+        region: scrapeRegion,
         maxPages,
         exactMatch: campaignWithFilters.exactMatch || false,
       });

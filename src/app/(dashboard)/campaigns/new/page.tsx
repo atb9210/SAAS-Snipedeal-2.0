@@ -1,5 +1,5 @@
 // src/app/(dashboard)/campaigns/new/page.tsx - Wizard Nuova Campagna (3 step)
-// Timestamp: 2024-12-09
+// Timestamp: 2024-12-15
 
 'use client';
 
@@ -15,7 +15,8 @@ import {
   Zap,
   Loader2
 } from 'lucide-react';
-import { platformConfig, italianRegions } from '@/lib/utils';
+import { platformConfig } from '@/lib/utils';
+import { CommonFilters, PlatformFilters } from '@/components/filters';
 
 type Step = 1 | 2 | 3;
 
@@ -23,12 +24,16 @@ interface FormData {
   name: string;
   keyword: string;
   platform: string;
+  // Filtri comuni
   minPrice: string;
   maxPrice: string;
-  region: string;
-  exactMatch: boolean;
   includeKeywords: string;
   excludeKeywords: string;
+  // Filtri Subito
+  region: string;
+  exactMatch: boolean;
+  // Filtri eBay
+  ebayLocation: string;
 }
 
 export default function NewCampaignPage() {
@@ -43,10 +48,11 @@ export default function NewCampaignPage() {
     platform: 'SUBITO',
     minPrice: '',
     maxPrice: '',
-    region: '',
-    exactMatch: false,
     includeKeywords: '',
     excludeKeywords: '',
+    region: '',
+    exactMatch: false,
+    ebayLocation: '',
   });
 
   const updateForm = (field: keyof FormData, value: string | boolean) => {
@@ -87,6 +93,18 @@ export default function NewCampaignPage() {
     setError('');
 
     try {
+      // Costruisci platformFilters in base alla piattaforma
+      let platformFilters: Record<string, unknown> = {};
+      if (formData.platform === 'SUBITO') {
+        platformFilters = {
+          region: formData.region || null,
+        };
+      } else if (formData.platform === 'EBAY') {
+        platformFilters = {
+          location: formData.ebayLocation || null,
+        };
+      }
+
       const res = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,10 +114,11 @@ export default function NewCampaignPage() {
           platform: formData.platform,
           minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
           maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : null,
-          region: formData.region || null,
+          region: formData.platform === 'SUBITO' ? formData.region || null : null,
           exactMatch: formData.exactMatch,
           includeKeywords: formData.includeKeywords || null,
           excludeKeywords: formData.excludeKeywords || null,
+          platformFilters: Object.keys(platformFilters).length > 0 ? platformFilters : null,
         }),
       });
 
@@ -210,7 +229,7 @@ export default function NewCampaignPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {Object.entries(platformConfig).map(([key, config]) => {
-                      const isActive = key === 'SUBITO';
+                      const isActive = key === 'SUBITO' || key === 'EBAY';
                       const isSelected = formData.platform === key;
                       
                       return (
@@ -256,7 +275,7 @@ export default function NewCampaignPage() {
               animate="center"
               exit="exit"
               transition={{ duration: 0.3 }}
-              className="p-6"
+              className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"
             >
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center">
@@ -273,113 +292,26 @@ export default function NewCampaignPage() {
               </div>
 
               <div className="space-y-6">
-                {/* Exact Match Toggle */}
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Ricerca esatta nel titolo
-                      </label>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Cerca solo annunci con la keyword esatta nel titolo
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => updateForm('exactMatch', !formData.exactMatch)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        formData.exactMatch ? 'bg-primary' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          formData.exactMatch ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
+                {/* Filtri specifici per piattaforma */}
+                <PlatformFilters
+                  platform={formData.platform}
+                  values={formData}
+                  onChange={(field, value) => updateForm(field as keyof FormData, value)}
+                />
+                
+                {/* Separatore */}
+                <div className="border-t border-gray-100 pt-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-4">Filtri comuni</h3>
                 </div>
-
-                {/* Price Range */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Range di prezzo
-                  </label>
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <input
-                        type="number"
-                        value={formData.minPrice}
-                        onChange={(e) => updateForm('minPrice', e.target.value)}
-                        placeholder="Min €"
-                        className="input"
-                      />
-                    </div>
-                    <div className="flex items-center text-gray-400">—</div>
-                    <div className="flex-1">
-                      <input
-                        type="number"
-                        value={formData.maxPrice}
-                        onChange={(e) => updateForm('maxPrice', e.target.value)}
-                        placeholder="Max €"
-                        className="input"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Region */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Regione
-                  </label>
-                  <select
-                    value={formData.region}
-                    onChange={(e) => updateForm('region', e.target.value)}
-                    className="input"
-                  >
-                    <option value="">Tutta Italia</option>
-                    {italianRegions.map((region) => (
-                      <option key={region} value={region}>
-                        {region}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Include Keywords */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Includi parole chiave
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.includeKeywords}
-                    onChange={(e) => updateForm('includeKeywords', e.target.value)}
-                    placeholder="es. originale, nuovo (separate da virgola)"
-                    className="input"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Mostra solo annunci che contengono almeno una di queste parole
-                  </p>
-                </div>
-
-                {/* Exclude Keywords */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Escludi parole chiave
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.excludeKeywords}
-                    onChange={(e) => updateForm('excludeKeywords', e.target.value)}
-                    placeholder="es. rotto, difettoso (separate da virgola)"
-                    className="input"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Nascondi annunci che contengono queste parole
-                  </p>
-                </div>
+                
+                {/* Filtri comuni a tutte le piattaforme */}
+                <CommonFilters
+                  minPrice={formData.minPrice}
+                  maxPrice={formData.maxPrice}
+                  includeKeywords={formData.includeKeywords}
+                  excludeKeywords={formData.excludeKeywords}
+                  onChange={(field, value) => updateForm(field as keyof FormData, value)}
+                />
               </div>
             </motion.div>
           )}
@@ -450,10 +382,18 @@ export default function NewCampaignPage() {
                         </span>
                       </div>
                     )}
-                    {formData.region && (
+                    {formData.platform === 'SUBITO' && formData.region && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Regione</span>
                         <span className="font-medium">{formData.region}</span>
+                      </div>
+                    )}
+                    {formData.platform === 'EBAY' && formData.ebayLocation && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Provenienza</span>
+                        <span className="font-medium">
+                          {formData.ebayLocation === 'IT' ? 'Italia' : formData.ebayLocation === 'EU' ? 'Unione Europea' : 'Tutto il mondo'}
+                        </span>
                       </div>
                     )}
                     {formData.exactMatch && (

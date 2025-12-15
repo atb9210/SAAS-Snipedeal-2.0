@@ -98,7 +98,7 @@ export class PacketstreamProvider implements ProxyProviderService {
         };
       }
 
-      const data = await response.json();
+      const data = await response.json() as { query: string; country: string; city: string };
 
       return {
         success: true,

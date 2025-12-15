@@ -96,10 +96,15 @@ model Campaign {
   maxPrice    Float?
   region      String?   // Regione italiana (es. "Lombardia")
   
-  // Filtri avanzati di ricerca
+  // Filtri avanzati di ricerca (comuni a tutte le piattaforme)
   exactMatch      Boolean  @default(false)  // Se true, usa qso=true (ricerca solo nel titolo)
   includeKeywords String?  @db.Text         // Parole da includere (separate da virgola)
   excludeKeywords String?  @db.Text         // Parole da escludere (separate da virgola)
+  
+  // Filtri specifici per piattaforma (JSON flessibile)
+  // Subito: { "region": "Lombardia" }
+  // eBay: { "location": "IT" | "EU" }
+  platformFilters Json?
   
   // Stato e scheduling
   isActive    Boolean   @default(true)

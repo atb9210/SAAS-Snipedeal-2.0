@@ -20,6 +20,8 @@ const createCampaignSchema = z.object({
   exactMatch: z.boolean().optional().default(false),
   includeKeywords: z.string().nullable().optional(),
   excludeKeywords: z.string().nullable().optional(),
+  // Filtri specifici per piattaforma (JSON)
+  platformFilters: z.record(z.unknown()).nullable().optional(),
 });
 
 // GET - Lista campagne utente
@@ -131,6 +133,7 @@ export async function POST(request: NextRequest) {
         exactMatch: data.exactMatch || false,
         includeKeywords: data.includeKeywords || null,
         excludeKeywords: data.excludeKeywords || null,
+        platformFilters: data.platformFilters as object | undefined,
         nextRunAt,
         isActive: true,
       },
