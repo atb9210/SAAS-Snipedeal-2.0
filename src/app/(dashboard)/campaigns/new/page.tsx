@@ -242,9 +242,7 @@ export default function NewCampaignPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {Object.entries(platformConfig).map(([key, config]) => {
-                      // Facebook solo per dev (NODE_ENV=development)
-                      const isDev = process.env.NODE_ENV === 'development';
-                      const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED' || (key === 'FACEBOOK' && isDev);
+                      const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED' || key === 'FACEBOOK';
                       const isSelected = formData.platform === key;
                       
                       return (
