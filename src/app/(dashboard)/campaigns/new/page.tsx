@@ -34,6 +34,10 @@ interface FormData {
   exactMatch: boolean;
   // Filtri eBay
   ebayLocation: string;
+  // Filtri Facebook
+  facebookCity: string;
+  facebookExactMatch: boolean;
+  facebookFreeOnly: boolean;
 }
 
 export default function NewCampaignPage() {
@@ -53,6 +57,9 @@ export default function NewCampaignPage() {
     region: '',
     exactMatch: false,
     ebayLocation: '',
+    facebookCity: 'Milano',
+    facebookExactMatch: false,
+    facebookFreeOnly: false,
   });
 
   const updateForm = (field: keyof FormData, value: string | boolean) => {
@@ -102,6 +109,12 @@ export default function NewCampaignPage() {
       } else if (formData.platform === 'EBAY') {
         platformFilters = {
           location: formData.ebayLocation || null,
+        };
+      } else if (formData.platform === 'FACEBOOK') {
+        platformFilters = {
+          city: formData.facebookCity || 'Milano',
+          exactMatch: formData.facebookExactMatch || false,
+          freeOnly: formData.facebookFreeOnly || false,
         };
       }
 
@@ -229,7 +242,9 @@ export default function NewCampaignPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {Object.entries(platformConfig).map(([key, config]) => {
-                      const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED';
+                      // Facebook solo per dev (NODE_ENV=development)
+                      const isDev = process.env.NODE_ENV === 'development';
+                      const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED' || (key === 'FACEBOOK' && isDev);
                       const isSelected = formData.platform === key;
                       
                       return (
@@ -343,14 +358,14 @@ export default function NewCampaignPage() {
               </div>
 
               <div className="space-y-6">
-                {/* Campaign Name */}
+                {/* Campaign Name - pre-compilato con keyword - marketplace */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nome campagna
                   </label>
                   <input
                     type="text"
-                    value={formData.name}
+                    value={formData.name || `${formData.keyword} - ${platformConfig[formData.platform as keyof typeof platformConfig]?.name || formData.platform}`}
                     onChange={(e) => updateForm('name', e.target.value)}
                     placeholder={formData.keyword || 'Nome campagna'}
                     className="input"
@@ -396,7 +411,25 @@ export default function NewCampaignPage() {
                         </span>
                       </div>
                     )}
-                    {formData.exactMatch && (
+                    {formData.platform === 'FACEBOOK' && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Città</span>
+                        <span className="font-medium">{formData.facebookCity}</span>
+                      </div>
+                    )}
+                    {formData.platform === 'FACEBOOK' && formData.facebookExactMatch && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Corrispondenza esatta</span>
+                        <span className="font-medium text-primary">Attiva</span>
+                      </div>
+                    )}
+                    {formData.platform === 'FACEBOOK' && formData.facebookFreeOnly && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Solo regalo</span>
+                        <span className="font-medium text-green-600">Attivo</span>
+                      </div>
+                    )}
+                    {formData.exactMatch && formData.platform !== 'FACEBOOK' && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Ricerca esatta</span>
                         <span className="font-medium text-primary">Attiva</span>

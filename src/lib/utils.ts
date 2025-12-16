@@ -68,11 +68,6 @@ export const platformConfig = {
     color: '#09B1BA',
     icon: '🟢',
   },
-  WALLAPOP: {
-    name: 'Wallapop',
-    color: '#13C1AC',
-    icon: '🟣',
-  },
   FACEBOOK: {
     name: 'FB Marketplace',
     color: '#1877F2',

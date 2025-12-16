@@ -189,6 +189,12 @@ const worker = new Worker<ScraperJobData>(
         console.log(`[Job ${job.id}] eBay location filter: ${scrapeRegion || 'worldwide'}`);
       }
       
+      // Per Facebook: passa platformFilters con city e exactMatch
+      if (campaign.platform === 'FACEBOOK' && campaignWithFilters.platformFilters) {
+        const fbFilters = campaignWithFilters.platformFilters as { city?: string; exactMatch?: boolean };
+        console.log(`[Job ${job.id}] Facebook city filter: ${fbFilters.city || 'Milano'}`);
+      }
+      
       const result = await scraper.scrape({
         keyword: campaign.keyword,
         minPrice: campaign.minPrice,
@@ -196,6 +202,7 @@ const worker = new Worker<ScraperJobData>(
         region: scrapeRegion,
         maxPages,
         exactMatch: campaignWithFilters.exactMatch || false,
+        platformFilters: campaignWithFilters.platformFilters || undefined,
       });
 
       // Applica filtri include/exclude sui risultati

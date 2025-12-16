@@ -20,6 +20,7 @@ export interface ScrapeOptions {
   region?: string | null;
   maxPages?: number;
   exactMatch?: boolean;  // Se true, cerca solo nel titolo (qso=true per Subito)
+  platformFilters?: Record<string, unknown>;  // Filtri specifici per piattaforma
 }
 
 export interface ScrapeResult {
