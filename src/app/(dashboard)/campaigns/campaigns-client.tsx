@@ -17,9 +17,11 @@ import {
   Edit,
   ChevronRight,
   Target,
-  Filter
+  Filter,
+  Zap
 } from 'lucide-react';
 import { platformConfig, formatRelativeDate } from '@/lib/utils';
+import { QuickSearchModal } from '@/components/quick-search/QuickSearchModal';
 
 interface Campaign {
   id: string;
@@ -46,6 +48,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
   const [filter, setFilter] = useState<'all' | 'active' | 'paused'>('all');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
 
   const filteredCampaigns = campaigns.filter(c => {
     if (filter === 'active') return c.isActive;
@@ -198,12 +201,21 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
               {campaigns.length}/{planLimits.maxCampaigns} campagne
             </p>
           </div>
-          {canCreateMore && (
-            <Link href="/campaigns/new" className="btn-primary btn-md">
-              <Plus className="w-5 h-5 mr-1" />
-              Nuova
-            </Link>
-          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsQuickSearchOpen(true)}
+              className="btn-secondary btn-md"
+            >
+              <Zap className="w-5 h-5 mr-1" />
+              Ricerca Rapida
+            </button>
+            {canCreateMore && (
+              <Link href="/campaigns/new" className="btn-primary btn-md">
+                <Plus className="w-5 h-5 mr-1" />
+                Nuova
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Filters */}
@@ -385,6 +397,12 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
           onClick={() => setMenuOpen(null)} 
         />
       )}
+
+      {/* Quick Search Modal */}
+      <QuickSearchModal 
+        isOpen={isQuickSearchOpen}
+        onClose={() => setIsQuickSearchOpen(false)}
+      />
     </div>
   );
 }
