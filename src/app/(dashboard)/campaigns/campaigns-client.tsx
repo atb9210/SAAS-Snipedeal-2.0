@@ -291,8 +291,9 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
                             <h3 className="font-semibold text-gray-900">
                               {campaign.name}
                             </h3>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                              {platform?.icon} {campaign.keyword}
+                            <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
+                              {platform && <platform.icon size={16} className="text-gray-400" />}
+                              {campaign.keyword}
                             </p>
                           </div>
                           

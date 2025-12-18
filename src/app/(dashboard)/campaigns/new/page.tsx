@@ -259,7 +259,7 @@ export default function NewCampaignPage() {
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-2xl">{config.icon}</span>
+                            <config.icon size={24} className="text-gray-600" />
                             <span className="font-medium text-gray-900">
                               {config.name}
                             </span>

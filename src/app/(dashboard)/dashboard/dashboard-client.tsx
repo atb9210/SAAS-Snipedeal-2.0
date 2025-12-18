@@ -182,17 +182,11 @@ export function DashboardClient({
               >
                 {/* Image */}
                 <div className="w-20 h-20 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
-                  {result.image ? (
-                    <img
-                      src={result.image}
-                      alt={result.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl">
-                      📦
-                    </div>
-                  )}
+                  {(() => {
+                    const platform = result.campaign?.platform || 'SUBITO';
+                    const IconComponent = platformConfig[platform as keyof typeof platformConfig].icon;
+                    return <IconComponent size={48} className="w-full h-full object-contain p-2" />;
+                  })()}
                 </div>
 
                 {/* Content */}

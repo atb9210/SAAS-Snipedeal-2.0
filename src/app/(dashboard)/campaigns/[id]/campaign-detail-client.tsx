@@ -146,8 +146,9 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
             <h1 className="font-semibold text-gray-900 truncate">
               {campaign.name}
             </h1>
-            <p className="text-sm text-gray-500">
-              {platform?.icon} {campaign.keyword}
+            <p className="text-sm text-gray-500 flex items-center gap-1">
+              <platform.icon size={16} className="text-gray-400" />
+              {campaign.keyword}
             </p>
           </div>
           <Link 
@@ -319,19 +320,11 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
                   )}
 
                   {/* Image */}
-                  <div className="w-24 h-24 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
-                    {result.image ? (
-                      <img
-                        src={result.image}
-                        alt={result.title}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl">
-                        📦
-                      </div>
-                    )}
+                  <div className="w-24 h-24 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                    {(() => {
+                      const IconComponent = platformConfig[campaign.platform as keyof typeof platformConfig].icon;
+                      return <IconComponent size={56} className="w-full h-full object-contain p-2" />;
+                    })()}
                   </div>
 
                   {/* Content */}

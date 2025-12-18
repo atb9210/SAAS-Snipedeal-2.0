@@ -131,8 +131,9 @@ export default function FavoritesClient({ favorites: initialFavorites, stats: in
           {Object.entries(stats.byPlatform).map(([platform, count]) => {
             const config = platformConfig[platform as keyof typeof platformConfig];
             return (
-              <span key={platform} className="badge bg-gray-100 text-gray-700">
-                {config?.icon} {config?.name}: {count}
+              <span key={platform} className="badge bg-gray-100 text-gray-700 flex items-center gap-1">
+                {config && <config.icon size={14} className="text-gray-600" />}
+                {config?.name}: {count}
               </span>
             );
           })}
@@ -173,7 +174,8 @@ export default function FavoritesClient({ favorites: initialFavorites, stats: in
                   selectedPlatform === platform ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                {config?.icon} {config?.name}
+                {config && <config.icon size={14} className="text-gray-600" />}
+                {config?.name}
               </button>
             );
           })}
@@ -213,19 +215,12 @@ export default function FavoritesClient({ favorites: initialFavorites, stats: in
               className="card flex gap-3 hover:shadow-card-hover relative"
             >
               {/* Image */}
-              <div className="w-24 h-24 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
-                {favorite.result.image ? (
-                  <img
-                    src={favorite.result.image}
-                    alt={favorite.result.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-3xl">
-                    📦
-                  </div>
-                )}
+              <div className="w-24 h-24 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                {(() => {
+                  const platform = favorite.result.campaign?.platform || 'SUBITO';
+                  const IconComponent = platformConfig[platform as keyof typeof platformConfig].icon;
+                  return <IconComponent size={56} className="w-full h-full object-contain p-2" />;
+                })()}
               </div>
 
               {/* Content */}
@@ -236,7 +231,10 @@ export default function FavoritesClient({ favorites: initialFavorites, stats: in
                       {favorite.result.title}
                     </h3>
                     <p className="text-xs text-gray-500 mt-1">
-                      {platformConfig[favorite.result.campaign.platform as keyof typeof platformConfig]?.icon}{' '}
+                      {(() => {
+                        const config = platformConfig[favorite.result.campaign.platform as keyof typeof platformConfig];
+                        return config ? <config.icon size={14} className="text-gray-600" /> : null;
+                      })()}{' '}
                       {favorite.result.campaign.name}
                     </p>
                   </div>

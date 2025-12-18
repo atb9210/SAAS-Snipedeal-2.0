@@ -90,19 +90,12 @@ export function NotificationsClient({ groupedResults }: NotificationsClientProps
                       className="card flex gap-3 hover:shadow-card-hover"
                     >
                       {/* Image */}
-                      <div className="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden">
-                        {result.image ? (
-                          <img
-                            src={result.image}
-                            alt={result.title}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-2xl">
-                            📦
-                          </div>
-                        )}
+                      <div className="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        {(() => {
+                          const platform = result.campaign?.platform || 'SUBITO';
+                          const IconComponent = platformConfig[platform as keyof typeof platformConfig].icon;
+                          return <IconComponent size={40} className="w-full h-full object-contain p-1" />;
+                        })()}
                       </div>
 
                       {/* Content */}
@@ -127,7 +120,10 @@ export function NotificationsClient({ groupedResults }: NotificationsClientProps
                         </p>
                         
                         <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                          <span>{platform?.icon} {result.campaign.name}</span>
+                          <span className="flex items-center gap-1">
+                            {platform && <platform.icon size={14} className="text-gray-600" />}
+                            {result.campaign.name}
+                          </span>
                           <span>•</span>
                           <span>{formatRelativeDate(result.createdAt)}</span>
                         </div>
