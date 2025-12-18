@@ -107,19 +107,8 @@ COPY --from=builder /app/node_modules/@prisma/engines ./node_modules/@prisma/eng
 # Copia bcryptjs per il seed
 COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 COPY --from=builder /app/node_modules/@types/bcryptjs ./node_modules/@types/bcryptjs
-# Copia Playwright per scraping
-COPY --from=builder /app/node_modules/playwright ./node_modules/playwright
-COPY --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
-COPY --from=builder /app/node_modules/.bin/playwright ./node_modules/.bin/playwright
 # Assicurati che tutti i file binari Prisma siano leggibili
 RUN chmod -R +r ./node_modules/prisma 2>/dev/null || true
-RUN chmod +x ./node_modules/.bin/prisma 2>/dev/null || true
-RUN chmod +x ./node_modules/.bin/playwright 2>/dev/null || true
-
-# Installa Playwright browser (Chromium) per scraping
-RUN npx playwright install chromium --with-deps
-
-# Imposta permessi per node_modules/.bin (per Prisma CLI)
 RUN chmod +x ./node_modules/.bin/prisma 2>/dev/null || true
 
 USER nextjs
