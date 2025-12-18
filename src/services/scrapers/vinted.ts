@@ -50,12 +50,19 @@ export class VintedScraper extends BaseScraper {
         allAds.push(...pageAds);
       }
 
+      // Filtra per keyword nel titolo (almeno 75% delle parole devono matchare)
+      const keywordFilteredAds = allAds.filter(ad => 
+        this.matchesKeyword(ad.title, keyword)
+      );
+      
+      this.log(`Keyword filter: ${keywordFilteredAds.length} ads match "${keyword}" (from ${allAds.length})`);
+
       // Filtra per prezzo
-      const filteredAds = allAds.filter(ad => 
+      const filteredAds = keywordFilteredAds.filter(ad => 
         this.matchesPriceFilter(ad.price, minPrice, maxPrice)
       );
 
-      this.log(`Found ${filteredAds.length} ads (filtered from ${allAds.length})`);
+      this.log(`Found ${filteredAds.length} ads (after price filter)`);
 
       return {
         success: true,
@@ -203,5 +210,32 @@ export class VintedScraper extends BaseScraper {
       .replace(/&#39;/g, "'")
       .replace(/&nbsp;/g, ' ')
       .trim();
+  }
+
+  /**
+   * Verifica se il titolo contiene la keyword cercata.
+   * Se la keyword ha più parole (es. "iphone 12 pro max"), 
+   * almeno il 75% delle parole devono essere presenti nel titolo.
+   */
+  private matchesKeyword(title: string, keyword: string): boolean {
+    const titleLower = title.toLowerCase();
+    const keywordLower = keyword.toLowerCase();
+    
+    // Dividi la keyword in parole (rimuovi parole troppo corte come "12", "pro", ecc. potrebbero essere numeri)
+    const keywordWords = keywordLower.split(/\s+/).filter(word => word.length >= 2);
+    
+    if (keywordWords.length === 0) return true;
+    
+    // Se è una sola parola, deve essere contenuta nel titolo
+    if (keywordWords.length === 1) {
+      return titleLower.includes(keywordWords[0]);
+    }
+    
+    // Se sono più parole, almeno il 75% devono matchare
+    const matchedWords = keywordWords.filter(word => titleLower.includes(word));
+    const matchPercentage = matchedWords.length / keywordWords.length;
+    
+    // Almeno 75% delle parole devono matchare
+    return matchPercentage >= 0.75;
   }
 }
