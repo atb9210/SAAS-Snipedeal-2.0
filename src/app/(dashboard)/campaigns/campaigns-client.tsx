@@ -22,7 +22,8 @@ import {
   Bell,
   BellOff,
   X,
-  Check
+  Check,
+  Copy
 } from 'lucide-react';
 import { platformConfig, formatRelativeDate } from '@/lib/utils';
 import { QuickSearchModal } from '@/components/quick-search/QuickSearchModal';
@@ -63,6 +64,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
   const [filter, setFilter] = useState<'all' | 'active' | 'paused'>('all');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState<string | null>(null);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
   const [isToggling, setIsToggling] = useState<string | null>(null);
   const [subKeywordsOpen, setSubKeywordsOpen] = useState<string | null>(null);
@@ -195,6 +197,41 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
       console.error('Error deleting campaign:', error);
     }
     setIsDeleting(null);
+    setMenuOpen(null);
+  };
+
+  const handleDuplicate = async (id: string) => {
+    const campaign = campaigns.find(c => c.id === id);
+    if (!campaign) return;
+    
+    if (campaigns.length >= planLimits.maxCampaigns) {
+      alert(`Hai raggiunto il limite di ${planLimits.maxCampaigns} campagne del piano ${planLimits.planName}`);
+      setMenuOpen(null);
+      return;
+    }
+    
+    setIsDuplicating(id);
+    try {
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `${campaign.name} (copia)`,
+          keyword: campaign.keyword,
+          platform: campaign.platform,
+          platformFilters: campaign.platformFilters,
+        }),
+      });
+      
+      if (res.ok) {
+        const newCampaign = await res.json();
+        setCampaigns([newCampaign, ...campaigns]);
+        router.push(`/campaigns/${newCampaign.id}/edit`);
+      }
+    } catch (error) {
+      console.error('Error duplicating campaign:', error);
+    }
+    setIsDuplicating(null);
     setMenuOpen(null);
   };
 
@@ -507,6 +544,14 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
                           <Edit className="w-4 h-4" />
                           Modifica
                         </Link>
+                        <button
+                          onClick={() => handleDuplicate(campaign.id)}
+                          disabled={isDuplicating === campaign.id}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <Copy className="w-4 h-4" />
+                          {isDuplicating === campaign.id ? 'Duplicazione...' : 'Duplica'}
+                        </button>
                         <button
                           onClick={() => handleDelete(campaign.id)}
                           disabled={isDeleting === campaign.id}
