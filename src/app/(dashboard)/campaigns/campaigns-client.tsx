@@ -225,7 +225,13 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
       
       if (res.ok) {
         const newCampaign = await res.json();
-        setCampaigns([newCampaign, ...campaigns]);
+        // Aggiungi _count mancante dalla risposta API
+        const campaignWithCount = {
+          ...newCampaign,
+          _count: { results: 0 },
+          lastRunAt: null,
+        };
+        setCampaigns([campaignWithCount, ...campaigns]);
         router.push(`/campaigns/${newCampaign.id}/edit`);
       }
     } catch (error) {
