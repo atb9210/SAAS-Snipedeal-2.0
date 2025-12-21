@@ -16,6 +16,7 @@ const updateCampaignSchema = z.object({
   maxPrice: z.number().min(0).nullable().optional(),
   region: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
+  platformFilters: z.any().optional(),
 });
 
 // GET - Dettaglio campagna
@@ -106,6 +107,7 @@ export async function PATCH(
         ...(data.maxPrice !== undefined && { maxPrice: data.maxPrice }),
         ...(data.region !== undefined && { region: data.region }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.platformFilters !== undefined && { platformFilters: data.platformFilters }),
       },
     });
 

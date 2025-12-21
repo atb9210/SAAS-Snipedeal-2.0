@@ -123,7 +123,8 @@ export default function AdminJobsPage() {
   // Queue control
   const [isPaused, setIsPaused] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [lastRefresh, setLastRefresh] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
 
   const fetchQueueStatus = async () => {
     try {
@@ -318,7 +319,7 @@ export default function AdminJobsPage() {
   };
 
   const refreshAll = () => {
-    setLastRefresh(new Date());
+    setLastRefresh(new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     fetchJobStats();
     fetchJobs();
     fetchWorkerStatus();
@@ -357,7 +358,7 @@ export default function AdminJobsPage() {
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Auto-refresh attivo"></div>
               <span className="hidden sm:inline">
-                Aggiornato {lastRefresh.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                Aggiornato {lastRefresh || '--:--:--'}
               </span>
             </div>
           </div>

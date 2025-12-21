@@ -1,5 +1,5 @@
 // src/components/filters/index.tsx - Factory per filtri piattaforma
-// Timestamp: 2024-12-15
+// Timestamp: 2024-12-21
 
 'use client';
 
@@ -13,6 +13,8 @@ export { CommonFilters } from './CommonFilters';
 export { SubitoFilters } from './SubitoFilters';
 export { EbayFilters } from './EbayFilters';
 export { FacebookFilters } from './FacebookFilters';
+export { SubKeywordRows } from './SubKeywordRows';
+export type { SubKeyword } from './SubKeywordRows';
 
 // Tipi per i filtri
 export interface FilterValues {

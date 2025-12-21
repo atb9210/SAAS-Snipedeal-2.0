@@ -161,6 +161,7 @@ model Result {
   
   // Notifica
   notified    Boolean   @default(false)
+  shouldNotify Boolean  @default(true)  // Se il risultato deve apparire nelle notifiche (basato su sub-keyword notify flag)
   isNew       Boolean   @default(true)
   
   // Data pubblicazione annuncio (dal marketplace)

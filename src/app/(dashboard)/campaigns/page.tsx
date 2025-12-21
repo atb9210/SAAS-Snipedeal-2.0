@@ -19,7 +19,17 @@ export default async function CampaignsPage() {
   const [campaigns, user] = await Promise.all([
     prisma.campaign.findMany({
       where: { userId: session.user.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        keyword: true,
+        platform: true,
+        isActive: true,
+        lastRunAt: true,
+        nextRunAt: true,
+        createdAt: true,
+        updatedAt: true,
+        platformFilters: true,
         _count: { 
           select: { 
             results: true,

@@ -24,6 +24,7 @@ export default async function NotificationsPage() {
     where: {
       campaign: { userId: session.user.id },
       createdAt: { gte: sevenDaysAgo },
+      shouldNotify: true, // Mostra solo risultati con notify=true dalle sub-keywords
     },
     include: {
       campaign: { select: { name: true, platform: true } },

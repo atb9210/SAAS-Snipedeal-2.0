@@ -1,5 +1,5 @@
 // src/app/(dashboard)/campaigns/new/page.tsx - Wizard Nuova Campagna (3 step)
-// Timestamp: 2024-12-15
+// Timestamp: 2024-12-21
 
 'use client';
 
@@ -13,10 +13,11 @@ import {
   Search,
   MapPin,
   Zap,
-  Loader2
+  Loader2,
+  Bell
 } from 'lucide-react';
 import { platformConfig } from '@/lib/utils';
-import { CommonFilters, PlatformFilters } from '@/components/filters';
+import { PlatformFilters, SubKeywordRows, type SubKeyword } from '@/components/filters';
 
 type Step = 1 | 2 | 3;
 
@@ -24,11 +25,9 @@ interface FormData {
   name: string;
   keyword: string;
   platform: string;
-  // Filtri comuni
-  minPrice: string;
-  maxPrice: string;
-  includeKeywords: string;
-  excludeKeywords: string;
+  // Sub-keyword con pricing granulare
+  subKeywords: SubKeyword[];
+  globalExclude: string;
   // Filtri Subito
   region: string;
   exactMatch: boolean;
@@ -50,10 +49,8 @@ export default function NewCampaignPage() {
     name: '',
     keyword: '',
     platform: 'SUBITO',
-    minPrice: '',
-    maxPrice: '',
-    includeKeywords: '',
-    excludeKeywords: '',
+    subKeywords: [],
+    globalExclude: '',
     region: '',
     exactMatch: false,
     ebayLocation: '',
@@ -62,7 +59,7 @@ export default function NewCampaignPage() {
     facebookFreeOnly: false,
   });
 
-  const updateForm = (field: keyof FormData, value: string | boolean) => {
+  const updateForm = (field: keyof FormData, value: string | boolean | SubKeyword[]) => {
     setFormData({ ...formData, [field]: value });
   };
 
@@ -101,6 +98,7 @@ export default function NewCampaignPage() {
 
     try {
       // Costruisci platformFilters in base alla piattaforma
+      // Include subKeywords per pricing granulare
       let platformFilters: Record<string, unknown> = {};
       if (formData.platform === 'SUBITO') {
         platformFilters = {
@@ -118,6 +116,22 @@ export default function NewCampaignPage() {
         };
       }
 
+      // Aggiungi subKeywords se presenti
+      if (formData.subKeywords.length > 0) {
+        platformFilters.subKeywords = formData.subKeywords.map(sk => ({
+          model: sk.model,
+          exclude: sk.exclude || null,
+          minPrice: sk.minPrice ? parseFloat(sk.minPrice) : null,
+          maxPrice: sk.maxPrice ? parseFloat(sk.maxPrice) : null,
+          notify: sk.notify,
+        }));
+      }
+      
+      // Aggiungi globalExclude se presente
+      if (formData.globalExclude) {
+        platformFilters.globalExclude = formData.globalExclude;
+      }
+
       const res = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -125,12 +139,12 @@ export default function NewCampaignPage() {
           name: formData.name || formData.keyword,
           keyword: formData.keyword,
           platform: formData.platform,
-          minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
-          maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : null,
+          minPrice: null,
+          maxPrice: null,
           region: formData.platform === 'SUBITO' ? formData.region || null : null,
           exactMatch: formData.exactMatch,
-          includeKeywords: formData.includeKeywords || null,
-          excludeKeywords: formData.excludeKeywords || null,
+          includeKeywords: null,
+          excludeKeywords: formData.globalExclude || null,
           platformFilters: Object.keys(platformFilters).length > 0 ? platformFilters : null,
         }),
       });
@@ -308,22 +322,30 @@ export default function NewCampaignPage() {
                 {/* Filtri specifici per piattaforma */}
                 <PlatformFilters
                   platform={formData.platform}
-                  values={formData}
-                  onChange={(field, value) => updateForm(field as keyof FormData, value)}
+                  values={{
+                    ...formData,
+                    minPrice: '',
+                    maxPrice: '',
+                    includeKeywords: '',
+                    excludeKeywords: '',
+                  }}
+                  onChange={(field: string, value: string | boolean) => updateForm(field as keyof FormData, value)}
                 />
                 
                 {/* Separatore */}
                 <div className="border-t border-gray-100 pt-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-4">Filtri comuni</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    Sub-keyword e Pricing
+                  </h3>
                 </div>
                 
-                {/* Filtri comuni a tutte le piattaforme */}
-                <CommonFilters
-                  minPrice={formData.minPrice}
-                  maxPrice={formData.maxPrice}
-                  includeKeywords={formData.includeKeywords}
-                  excludeKeywords={formData.excludeKeywords}
-                  onChange={(field, value) => updateForm(field as keyof FormData, value)}
+                {/* Sub-keyword rows con pricing granulare */}
+                <SubKeywordRows
+                  subKeywords={formData.subKeywords}
+                  onChange={(subKeywords) => updateForm('subKeywords', subKeywords)}
+                  globalExclude={formData.globalExclude}
+                  onGlobalExcludeChange={(value) => updateForm('globalExclude', value)}
                 />
               </div>
             </motion.div>
@@ -385,16 +407,6 @@ export default function NewCampaignPage() {
                         {platformConfig[formData.platform as keyof typeof platformConfig]?.name}
                       </span>
                     </div>
-                    {(formData.minPrice || formData.maxPrice) && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Prezzo</span>
-                        <span className="font-medium">
-                          {formData.minPrice ? `€${formData.minPrice}` : '—'} 
-                          {' - '}
-                          {formData.maxPrice ? `€${formData.maxPrice}` : '—'}
-                        </span>
-                      </div>
-                    )}
                     {formData.platform === 'SUBITO' && formData.region && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Regione</span>
@@ -433,16 +445,26 @@ export default function NewCampaignPage() {
                         <span className="font-medium text-primary">Attiva</span>
                       </div>
                     )}
-                    {formData.includeKeywords && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Includi</span>
-                        <span className="font-medium text-green-600">{formData.includeKeywords}</span>
+                    {formData.subKeywords.length > 0 && (
+                      <div className="pt-2 border-t border-gray-200">
+                        <span className="text-gray-500 text-xs">Sub-keyword ({formData.subKeywords.length})</span>
+                        <div className="mt-1 space-y-1">
+                          {formData.subKeywords.map((sk, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs">
+                              <span className="font-medium">{sk.model}</span>
+                              <span className="text-gray-500">
+                                €{sk.minPrice || '0'} - €{sk.maxPrice || '∞'}
+                                {sk.notify ? ' 🔔' : ' 🔕'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    {formData.excludeKeywords && (
+                    {formData.globalExclude && (
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Escludi</span>
-                        <span className="font-medium text-red-600">{formData.excludeKeywords}</span>
+                        <span className="text-gray-500">Escludi globale</span>
+                        <span className="font-medium text-red-600">{formData.globalExclude}</span>
                       </div>
                     )}
                   </div>

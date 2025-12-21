@@ -57,7 +57,7 @@ export class PacketstreamProvider implements ProxyProviderService {
       // Altrimenti aggiungi il paese
       authKeyFormatted = `${authKeyFormatted}_country-${targetCountry}`;
     }
-
+    
     // Determina protocollo e porta
     const protocol = preferHttp ? 'http' : 'socks5h';
     const port = preferHttp ? PORTS.HTTP : PORTS.SOCKS5;

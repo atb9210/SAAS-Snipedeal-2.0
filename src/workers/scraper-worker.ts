@@ -123,6 +123,18 @@ const worker = new Worker<ScraperJobData>(
     console.log(`   Job data:`, JSON.stringify(job.data));
     console.log(`   Timestamp: ${new Date().toISOString()}`);
 
+    // IMPORTANTE: Verifica che la campagna esista PRIMA di creare il job log
+    // Questo evita errori di Foreign Key se la campagna è stata eliminata mentre il job era in coda
+    const campaignExists = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { id: true },
+    });
+
+    if (!campaignExists) {
+      console.log(`⏭️ [Job ${job.id}] Campaign ${campaignId} not found (deleted?), skipping job`);
+      return; // Skip silenziosamente - la campagna è stata eliminata
+    }
+
     // Create job log
     const jobLog = await prisma.jobLog.create({
       data: {
@@ -133,7 +145,7 @@ const worker = new Worker<ScraperJobData>(
     });
 
     try {
-      // Get campaign
+      // Get campaign with full data
       const campaign = await prisma.campaign.findUnique({
         where: { id: campaignId },
         include: { user: { include: { plan: true } } },
@@ -208,26 +220,97 @@ const worker = new Worker<ScraperJobData>(
       // Applica filtri include/exclude sui risultati
       let filteredAds = result.ads;
       
-      if (campaignWithFilters.includeKeywords) {
-        const includeWords = campaignWithFilters.includeKeywords.split(',').map((w: string) => w.trim().toLowerCase()).filter((w: string) => w);
-        if (includeWords.length > 0) {
-          filteredAds = filteredAds.filter(ad => {
-            const title = ad.title.toLowerCase();
-            return includeWords.some((word: string) => title.includes(word));
+      // Leggi subKeywords da platformFilters per pricing granulare
+      interface SubKeywordFilter {
+        model: string;
+        exclude?: string | null;
+        minPrice?: number | null;
+        maxPrice?: number | null;
+        notify: boolean;
+      }
+      const platformFiltersData = campaignWithFilters.platformFilters as { 
+        subKeywords?: SubKeywordFilter[];
+        globalExclude?: string;
+      } | null;
+      const subKeywords = platformFiltersData?.subKeywords;
+      const globalExclude = platformFiltersData?.globalExclude || campaignWithFilters.excludeKeywords;
+      
+      // Helper per estrarre prezzo numerico
+      const parsePrice = (priceStr: string | null | undefined): number => {
+        if (!priceStr) return 0;
+        const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(',', '.');
+        return parseFloat(cleaned) || 0;
+      };
+      
+      // Se abbiamo subKeywords, filtra per matching con almeno una sub-keyword
+      if (subKeywords && subKeywords.length > 0) {
+        const beforeCount = filteredAds.length;
+        
+        // DEBUG: mostra primi 5 titoli per capire il formato
+        console.log(`[Job ${job.id}] DEBUG: First 5 ad titles:`);
+        filteredAds.slice(0, 5).forEach((ad, i) => {
+          console.log(`  ${i + 1}. "${ad.title}" (price: ${ad.price})`);
+        });
+        console.log(`[Job ${job.id}] DEBUG: SubKeywords to match: ${JSON.stringify(subKeywords)}`);
+        
+        // Filtra: ogni ad deve matchare almeno 1 sub-keyword (model + price range)
+        let matchCount = 0;
+        filteredAds = filteredAds.filter(ad => {
+          const title = ad.title.toLowerCase();
+          const price = parsePrice(ad.price);
+          
+          return subKeywords.some(sk => {
+            // Check model match - rimuovi spazi extra e normalizza
+            const modelNormalized = sk.model.toLowerCase().trim();
+            const titleNormalized = title.replace(/\s+/g, ' '); // normalizza spazi multipli
+            
+            // Match più flessibile: cerca ogni parola del model nel titolo
+            const modelWords = modelNormalized.split(/\s+/).filter(w => w.length > 0);
+            const modelMatch = modelWords.every(word => titleNormalized.includes(word));
+            
+            if (!modelMatch) return false;
+            
+            // Check sub-keyword specific exclude
+            if (sk.exclude) {
+              const excludeWords = sk.exclude.split(',').map(w => w.trim().toLowerCase()).filter(w => w);
+              const hasExcluded = excludeWords.some(word => titleNormalized.includes(word));
+              if (hasExcluded) return false;
+            }
+            
+            // Check price range for this sub-keyword
+            if (sk.minPrice && price < sk.minPrice) return false;
+            if (sk.maxPrice && price > sk.maxPrice) return false;
+            
+            return true;
           });
-          console.log(`[Job ${job.id}] After include filter: ${filteredAds.length} ads (was ${result.ads.length})`);
+        });
+        
+        console.log(`[Job ${job.id}] After subKeywords filter: ${filteredAds.length} ads (was ${beforeCount})`);
+        console.log(`[Job ${job.id}] SubKeywords config: ${JSON.stringify(subKeywords.map(sk => sk.model))}`);
+      } else {
+        // Fallback: usa include/exclude legacy se non ci sono subKeywords
+        if (campaignWithFilters.includeKeywords) {
+          const includeWords = campaignWithFilters.includeKeywords.split(',').map((w: string) => w.trim().toLowerCase()).filter((w: string) => w);
+          if (includeWords.length > 0) {
+            filteredAds = filteredAds.filter(ad => {
+              const title = ad.title.toLowerCase();
+              return includeWords.some((word: string) => title.includes(word));
+            });
+            console.log(`[Job ${job.id}] After include filter: ${filteredAds.length} ads (was ${result.ads.length})`);
+          }
         }
       }
       
-      if (campaignWithFilters.excludeKeywords) {
-        const excludeWords = campaignWithFilters.excludeKeywords.split(',').map((w: string) => w.trim().toLowerCase()).filter((w: string) => w);
+      // Applica globalExclude (sempre, indipendentemente da subKeywords)
+      if (globalExclude) {
+        const excludeWords = globalExclude.split(',').map((w: string) => w.trim().toLowerCase()).filter((w: string) => w);
         if (excludeWords.length > 0) {
           const beforeCount = filteredAds.length;
           filteredAds = filteredAds.filter(ad => {
             const title = ad.title.toLowerCase();
             return !excludeWords.some((word: string) => title.includes(word));
           });
-          console.log(`[Job ${job.id}] After exclude filter: ${filteredAds.length} ads (was ${beforeCount})`);
+          console.log(`[Job ${job.id}] After globalExclude filter: ${filteredAds.length} ads (was ${beforeCount})`);
         }
       }
       
@@ -246,9 +329,38 @@ const worker = new Worker<ScraperJobData>(
         result.ads.reverse();
       }
 
+      // Helper per determinare se un ad deve essere notificato (basato su sub-keyword notify flag)
+      const shouldNotifyAd = (ad: { title: string; price?: string | null }): boolean => {
+        if (!subKeywords || subKeywords.length === 0) {
+          return true; // Senza subKeywords, notifica tutti
+        }
+        
+        const title = ad.title.toLowerCase();
+        const price = parsePrice(ad.price);
+        
+        // Trova la sub-keyword che matcha questo ad
+        const matchingSubKeyword = subKeywords.find(sk => {
+          const modelMatch = sk.model && title.includes(sk.model.toLowerCase());
+          if (!modelMatch) return false;
+          
+          if (sk.exclude) {
+            const excludeWords = sk.exclude.split(',').map(w => w.trim().toLowerCase()).filter(w => w);
+            if (excludeWords.some(word => title.includes(word))) return false;
+          }
+          
+          if (sk.minPrice && price < sk.minPrice) return false;
+          if (sk.maxPrice && price > sk.maxPrice) return false;
+          
+          return true;
+        });
+        
+        return matchingSubKeyword?.notify ?? true;
+      };
+
       // Process results
       let newCount = 0;
       const newResultIds: string[] = [];
+      const notifiableResultIds: string[] = []; // Solo risultati con notify=true
 
       for (const ad of result.ads) {
         // Skip if no link
@@ -273,7 +385,8 @@ const worker = new Worker<ScraperJobData>(
             },
           });
         } else {
-          // Create new
+          // Create new - determina se deve essere notificato PRIMA di salvare
+          const adShouldNotify = shouldNotifyAd(ad);
           const newResult = await prisma.result.create({
             data: {
               campaignId: campaign.id,
@@ -285,12 +398,18 @@ const worker = new Worker<ScraperJobData>(
               status: ad.status,
               hasShipping: ad.hasShipping ?? false,
               notified: false,
+              shouldNotify: adShouldNotify, // Salva il flag notify basato su sub-keyword
               isNew: true,
               publishedAt: ad.date || null, // Data pubblicazione dal marketplace
             },
           });
           newCount++;
           newResultIds.push(newResult.id);
+          
+          // Track se deve essere notificato
+          if (adShouldNotify) {
+            notifiableResultIds.push(newResult.id);
+          }
         }
       }
 
@@ -344,30 +463,31 @@ const worker = new Worker<ScraperJobData>(
       console.log(`   Duration: ${jobDuration}ms`);
       console.log(`   Timestamp: ${new Date().toISOString()}`);
 
-      // Send push notifications for new results
-      if (newCount > 0 && campaign.user.pushSubscription) {
+      // Send push notifications for new results (solo per quelli con notify=true)
+      const notifiableCount = notifiableResultIds.length;
+      if (notifiableCount > 0 && campaign.user.pushSubscription) {
         try {
           const subscription = JSON.parse(campaign.user.pushSubscription) as PushSubscription;
           const notificationSent = await sendNewResultsNotification(
             subscription,
             campaign.name,
-            newCount
+            notifiableCount
           );
           
           if (notificationSent) {
-            console.log(`[Job ${job.id}] Push notification sent for ${newCount} new results`);
+            console.log(`[Job ${job.id}] Push notification sent for ${notifiableCount} notifiable results (${newCount} total new)`);
             
             // Update job log with notification info
             await prisma.jobLog.update({
               where: { id: jobLog.id },
               data: {
-                notified: newCount,
+                notified: notifiableCount,
               },
             });
 
-            // Mark results as notified
+            // Mark only notifiable results as notified
             await prisma.result.updateMany({
-              where: { id: { in: newResultIds } },
+              where: { id: { in: notifiableResultIds } },
               data: { notified: true },
             });
           }
@@ -375,6 +495,8 @@ const worker = new Worker<ScraperJobData>(
           console.error(`[Job ${job.id}] Failed to send push notification:`, pushError);
           // Don't throw - push notification failure shouldn't fail the job
         }
+      } else if (newCount > 0 && notifiableCount === 0) {
+        console.log(`[Job ${job.id}] ${newCount} new results found but all have notify=false, skipping push notification`);
       }
 
     } catch (error) {
