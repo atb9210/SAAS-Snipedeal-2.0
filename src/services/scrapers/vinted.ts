@@ -50,12 +50,10 @@ export class VintedScraper extends BaseScraper {
         allAds.push(...pageAds);
       }
 
-      // Filtra per keyword nel titolo (almeno 75% delle parole devono matchare)
-      const keywordFilteredAds = allAds.filter(ad => 
-        this.matchesKeyword(ad.title, keyword)
-      );
+      // Vinted applica già il suo filtro interno, non filtriamo ulteriormente per keyword
+      const keywordFilteredAds = allAds;
       
-      this.log(`Keyword filter: ${keywordFilteredAds.length} ads match "${keyword}" (from ${allAds.length})`);
+      this.log(`Vinted internal filter: ${keywordFilteredAds.length} ads found for "${keyword}"`);
 
       // Filtra per prezzo
       const filteredAds = keywordFilteredAds.filter(ad => 
