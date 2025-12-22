@@ -59,8 +59,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
   let groupCampaigns: typeof campaign[] = [];
   
   if (!campaign) {
-    console.log('[CampaignDetail] Campaign not found by id, searching by groupId:', params.id);
-    // Cerca tutte le campagne del gruppo
+        // Cerca tutte le campagne del gruppo
     groupCampaigns = await prisma.campaign.findMany({
       where: { 
         groupId: params.id,
@@ -93,11 +92,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
       },
     });
     
-    console.log('[CampaignDetail] Found', groupCampaigns.length, 'campaigns in group');
-    groupCampaigns.forEach((c, i) => {
-      if (c) console.log(`[CampaignDetail] Campaign ${i}: ${c.platform} - ${c._count.results} results`);
-    });
-    
+        
     if (groupCampaigns.length > 0) {
       isGroupView = true;
       // Crea una campagna "virtuale" con risultati aggregati di tutte le piattaforme
@@ -108,7 +103,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
       
       // Aggrega tutti i risultati da tutte le campagne del gruppo
       const allResults = validCampaigns.flatMap(c => 
-        c.results.map((r) => ({
+        c.results.map((r: any) => ({
           ...r,
           // Aggiungi info sulla piattaforma di origine
           sourcePlatform: c.platform,
@@ -132,7 +127,7 @@ export default async function CampaignDetailPage({ params }: PageProps) {
         groupId: firstCampaign.groupId,
         name: firstCampaign.name.replace(/ - (SUBITO|EBAY|VINTED|WALLAPOP)$/, ''),
         keyword: firstCampaign.keyword,
-        platform: validCampaigns.map(c => c.platform).join(','), // Piattaforme aggregate per il client
+        platform: validCampaigns.map(c => c.platform).join(',') as any, // Piattaforme aggregate per il client (UI only)
         minPrice: firstCampaign.minPrice,
         maxPrice: firstCampaign.maxPrice,
         region: firstCampaign.region,
@@ -181,15 +176,13 @@ export default async function CampaignDetailPage({ params }: PageProps) {
     nextRunAt: campaign.nextRunAt?.toISOString() || null,
     createdAt: campaign.createdAt.toISOString(),
     updatedAt: campaign.updatedAt.toISOString(),
-    results: campaign.results.map((r: typeof campaign.results[0]) => ({
+    results: campaign.results.map((r: any) => ({
       ...r,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       isFavorited: r.favorites && r.favorites.length > 0,
     })),
   };
-  
-  console.log('[CampaignDetail] AFTER serialization:', serializedCampaign.results.length, 'results');
 
   return (
     <CampaignDetailClient 

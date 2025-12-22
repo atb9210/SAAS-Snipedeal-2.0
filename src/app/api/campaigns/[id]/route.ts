@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 // Schema validazione update
@@ -119,7 +120,7 @@ export async function PATCH(
   }
 }
 
-// DELETE - Elimina campagna
+// DELETE - Elimina campagna o gruppo di campagne
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -131,7 +132,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    // Verifica proprietà campagna
+    // Prima prova a trovare una campagna diretta
     const existingCampaign = await prisma.campaign.findFirst({
       where: { 
         id: params.id,
@@ -139,16 +140,45 @@ export async function DELETE(
       },
     });
 
-    if (!existingCampaign) {
+    if (existingCampaign) {
+      // Elimina singola campagna
+      await prisma.campaign.delete({
+        where: { id: params.id },
+      });
+      revalidatePath('/campaigns');
+      return NextResponse.json({ success: true });
+    }
+
+    // Se non trovata, potrebbe essere un groupId - elimina tutte le campagne del gruppo
+    const groupCampaigns = await prisma.campaign.findMany({
+      where: {
+        groupId: params.id,
+        userId: session.user.id,
+      },
+    });
+
+    if (groupCampaigns.length === 0) {
       return NextResponse.json({ error: 'Campagna non trovata' }, { status: 404 });
     }
 
-    // Elimina campagna (cascade elimina anche risultati e logs)
-    await prisma.campaign.delete({
-      where: { id: params.id },
+    // Elimina tutte le campagne del gruppo
+    await prisma.campaign.deleteMany({
+      where: {
+        groupId: params.id,
+        userId: session.user.id,
+      },
     });
 
-    return NextResponse.json({ success: true });
+    // Elimina anche il CampaignGroup se esiste
+    await prisma.campaignGroup.deleteMany({
+      where: {
+        id: params.id,
+        userId: session.user.id,
+      },
+    });
+
+    revalidatePath('/campaigns');
+    return NextResponse.json({ success: true, deletedCount: groupCampaigns.length });
   } catch (error) {
     console.error('Error deleting campaign:', error);
     return NextResponse.json(

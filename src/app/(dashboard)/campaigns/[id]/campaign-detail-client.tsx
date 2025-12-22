@@ -13,6 +13,7 @@ import {
   Pause,
   Settings,
   ExternalLink,
+  HelpCircle,
   Clock,
   MapPin,
   Tag,
@@ -34,7 +35,8 @@ interface Result {
   isNew: boolean;
   notified: boolean;
   createdAt: string;
-  isFavorited?: boolean; // Add favorite status
+  isFavorited?: boolean;
+  sourcePlatform?: string; // Piattaforma di origine per gruppi multi-platform
 }
 
 interface Campaign {
@@ -61,17 +63,13 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
   const router = useRouter();
   const [isActive, setIsActive] = useState(campaign.isActive);
   const [isToggling, setIsToggling] = useState(false);
-  const [results, setResults] = useState(campaign.results);
   const [showFilters, setShowFilters] = useState(false);
   const [filter, setFilter] = useState<'all' | 'new'>('all');
+  
+  // Usa direttamente campaign.results
+  const results = campaign.results || [];
 
-  // Aggiorna results quando campaign.results cambia (es. navigazione tra gruppi)
-  useEffect(() => {
-    console.log('[CampaignDetailClient] Received', campaign.results.length, 'results');
-    console.log('[CampaignDetailClient] First 3 results:', campaign.results.slice(0, 3).map(r => r.title));
-    setResults(campaign.results);
-  }, [campaign.results]);
-
+  
   // Verifica se è un gruppo multi-platform
   const isMultiPlatform = campaign.platform.includes(',');
   const platforms = isMultiPlatform ? campaign.platform.split(',') : [campaign.platform];
@@ -349,7 +347,10 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
                   {/* Image */}
                   <div className="w-24 h-24 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
                     {(() => {
-                      const IconComponent = platformConfig[campaign.platform as keyof typeof platformConfig].icon;
+                      // Usa la piattaforma del singolo risultato (sourcePlatform) se disponibile
+                      const resultPlatform = result.sourcePlatform || (isMultiPlatform ? platforms[0] : campaign.platform);
+                      const platformConfigItem = platformConfig[resultPlatform as keyof typeof platformConfig];
+                      const IconComponent = platformConfigItem?.icon || HelpCircle;
                       return <IconComponent size={56} className="w-full h-full object-contain p-2" />;
                     })()}
                   </div>

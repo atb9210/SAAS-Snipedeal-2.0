@@ -18,7 +18,8 @@ import {
   ChevronRight,
   Target,
   Filter,
-  Zap
+  Zap,
+  RefreshCw
 } from 'lucide-react';
 import { platformConfig, formatRelativeDate } from '@/lib/utils';
 import { QuickSearchModal } from '@/components/quick-search/QuickSearchModal';
@@ -96,6 +97,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
   const [filter, setFilter] = useState<'all' | 'active' | 'paused'>('all');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState<string | null>(null);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
 
   // Aggrega campagne per gruppo
@@ -107,50 +109,47 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
     return true;
   });
 
-  const handleToggle = async (id: string) => {
+  const handleToggle = async (id: string, groupId?: string | null) => {
+    setIsToggling(id);
+    setMenuOpen(null);
+    
     try {
-      // Trova la campagna corrente per il suo stato
+      // Optimistic update
       const currentCampaign = campaigns.find(c => c.id === id);
-      if (!currentCampaign) return;
-
-      // Ottimistic update - aggiorna subito l'UI
-      setRawCampaigns(rawCampaigns.map(c =>
-        c.id === id ? { ...c, isActive: !c.isActive } : c
-      ));
-
+      if (currentCampaign) {
+        const newIsActive = !currentCampaign.isActive;
+        if (groupId) {
+          setRawCampaigns(prev => prev.map(c =>
+            c.groupId === groupId ? { ...c, isActive: newIsActive } : c
+          ));
+        } else {
+          setRawCampaigns(prev => prev.map(c =>
+            c.id === id ? { ...c, isActive: newIsActive } : c
+          ));
+        }
+      }
+      
       const res = await fetch(`/api/campaigns/${id}/toggle`, { method: 'POST' });
-
       if (!res.ok) {
-        // Se fallisce, ripristina lo stato originale
-        setRawCampaigns(rawCampaigns.map(c =>
-          c.id === id ? { ...c, isActive: currentCampaign.isActive } : c
-        ));
-        console.error('Failed to toggle campaign');
-      } else {
-        // Aggiorna con i dati dal server per assicurare consistenza
-        const updatedCampaign = await res.json();
-        setRawCampaigns(rawCampaigns.map(c =>
-          c.id === id ? { ...c, ...updatedCampaign } : c
-        ));
+        // Rollback on error
+        router.refresh();
       }
     } catch (error) {
       console.error('Error toggling campaign:', error);
-      // Ripristina lo stato in caso di errore
-      setRawCampaigns(rawCampaigns.map(c =>
-        c.id === id ? { ...c, isActive: c.isActive } : c
-      ));
+      router.refresh();
     }
-    setMenuOpen(null);
+    setIsToggling(null);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, groupId?: string | null) => {
     if (!confirm('Sei sicuro di voler eliminare questa campagna?')) return;
     
     setIsDeleting(id);
     try {
-      const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
+      const deleteId = groupId || id;
+      const res = await fetch(`/api/campaigns/${deleteId}`, { method: 'DELETE' });
       if (res.ok) {
-        setRawCampaigns(rawCampaigns.filter(c => c.id !== id));
+        router.refresh();
       }
     } catch (error) {
       console.error('Error deleting campaign:', error);
@@ -396,7 +395,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
                             {campaign._count.results} risultati
                           </div>
                           {campaign.lastRunAt && (
-                            <div className="text-sm text-gray-400">
+                            <div className="text-sm text-gray-400" suppressHydrationWarning>
                               {formatRelativeDate(campaign.lastRunAt)}
                             </div>
                           )}
@@ -414,13 +413,23 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute top-12 right-4 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-10 min-w-[160px]"
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-12 right-4 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20 min-w-[160px]"
                       >
                         <button
-                          onClick={() => handleToggle(campaign.id)}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggle(campaign.id, campaign.groupId);
+                          }}
+                          disabled={isToggling === campaign.id}
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
                         >
-                          {campaign.isActive ? (
+                          {isToggling === campaign.id ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              Aggiornamento...
+                            </>
+                          ) : campaign.isActive ? (
                             <>
                               <Pause className="w-4 h-4" />
                               Metti in pausa
@@ -441,7 +450,10 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
                           Modifica
                         </Link>
                         <button
-                          onClick={() => handleDelete(campaign.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(campaign.id, campaign.groupId);
+                          }}
                           disabled={isDeleting === campaign.id}
                           className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
                         >
