@@ -21,7 +21,8 @@ export default async function CampaignDetailPage({ params }: PageProps) {
     return null;
   }
 
-  const campaign = await prisma.campaign.findFirst({
+  // Prima prova a trovare una campagna singola
+  let campaign = await prisma.campaign.findFirst({
     where: { 
       id: params.id,
       userId: session.user.id,
@@ -53,6 +54,106 @@ export default async function CampaignDetailPage({ params }: PageProps) {
     },
   });
 
+  // Se non trovata, potrebbe essere un groupId - carica TUTTE le campagne del gruppo
+  let isGroupView = false;
+  let groupCampaigns: typeof campaign[] = [];
+  
+  if (!campaign) {
+    console.log('[CampaignDetail] Campaign not found by id, searching by groupId:', params.id);
+    // Cerca tutte le campagne del gruppo
+    groupCampaigns = await prisma.campaign.findMany({
+      where: { 
+        groupId: params.id,
+        userId: session.user.id,
+      },
+      include: {
+        results: {
+          orderBy: { createdAt: 'desc' },
+          take: 100, // Più risultati per gruppo
+          include: {
+            favorites: {
+              where: {
+                userId: session.user.id,
+              },
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+        _count: { 
+          select: { 
+            results: true,
+          } 
+        },
+        jobLogs: {
+          orderBy: { startedAt: 'desc' },
+          take: 5,
+        },
+      },
+    });
+    
+    console.log('[CampaignDetail] Found', groupCampaigns.length, 'campaigns in group');
+    groupCampaigns.forEach((c, i) => {
+      if (c) console.log(`[CampaignDetail] Campaign ${i}: ${c.platform} - ${c._count.results} results`);
+    });
+    
+    if (groupCampaigns.length > 0) {
+      isGroupView = true;
+      // Crea una campagna "virtuale" con risultati aggregati di tutte le piattaforme
+      const firstCampaign = groupCampaigns[0]!;
+      
+      // Filtra campagne non null
+      const validCampaigns = groupCampaigns.filter((c): c is NonNullable<typeof c> => c !== null);
+      
+      // Aggrega tutti i risultati da tutte le campagne del gruppo
+      const allResults = validCampaigns.flatMap(c => 
+        c.results.map((r) => ({
+          ...r,
+          // Aggiungi info sulla piattaforma di origine
+          sourcePlatform: c.platform,
+        }))
+      );
+      
+      const sortedResults = allResults.slice(0, 100); // Senza ordinamento per vedere tutti i risultati
+      
+      // Calcola conteggio totale
+      const totalResults = validCampaigns.reduce((sum, c) => sum + c._count.results, 0);
+      
+      // Aggrega jobLogs
+      const allJobLogs = validCampaigns.flatMap(c => c.jobLogs)
+        .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+        .slice(0, 10);
+      
+      // Crea oggetto campagna aggregata - costruisci manualmente per evitare che spread sovrascriva results
+      campaign = {
+        id: firstCampaign.id,
+        userId: firstCampaign.userId,
+        groupId: firstCampaign.groupId,
+        name: firstCampaign.name.replace(/ - (SUBITO|EBAY|VINTED|WALLAPOP)$/, ''),
+        keyword: firstCampaign.keyword,
+        platform: validCampaigns.map(c => c.platform).join(','), // Piattaforme aggregate per il client
+        minPrice: firstCampaign.minPrice,
+        maxPrice: firstCampaign.maxPrice,
+        region: firstCampaign.region,
+        exactMatch: firstCampaign.exactMatch,
+        includeKeywords: firstCampaign.includeKeywords,
+        excludeKeywords: firstCampaign.excludeKeywords,
+        platformFilters: firstCampaign.platformFilters,
+        isActive: firstCampaign.isActive,
+        lastRunAt: firstCampaign.lastRunAt,
+        nextRunAt: firstCampaign.nextRunAt,
+        totalResults: totalResults,
+        newResults: firstCampaign.newResults,
+        createdAt: firstCampaign.createdAt,
+        updatedAt: firstCampaign.updatedAt,
+        results: sortedResults, // Risultati aggregati e ordinati da tutte le piattaforme
+        _count: { results: totalResults },
+        jobLogs: allJobLogs,
+      };
+    }
+  }
+
   if (!campaign) {
     notFound();
   }
@@ -80,16 +181,19 @@ export default async function CampaignDetailPage({ params }: PageProps) {
     nextRunAt: campaign.nextRunAt?.toISOString() || null,
     createdAt: campaign.createdAt.toISOString(),
     updatedAt: campaign.updatedAt.toISOString(),
-    results: campaign.results.map(r => ({
+    results: campaign.results.map((r: typeof campaign.results[0]) => ({
       ...r,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       isFavorited: r.favorites && r.favorites.length > 0,
     })),
   };
+  
+  console.log('[CampaignDetail] AFTER serialization:', serializedCampaign.results.length, 'results');
 
   return (
     <CampaignDetailClient 
+      key={`${campaign.id}-${campaign.results.length}`}
       campaign={serializedCampaign}
       frequencyMins={user?.plan?.frequencyMins || 180}
     />

@@ -30,6 +30,7 @@ model User {
   
   // Relazioni
   campaigns        Campaign[]
+  campaignGroups   CampaignGroup[]
   favorites        Favorite[]
   
   // Timestamps
@@ -79,12 +80,48 @@ model Plan {
 // MODELLI CAMPAGNA
 // ============================================
 
+// Gruppo di campagne per multi-platform (PRO/ULTRA)
+model CampaignGroup {
+  id          String     @id @default(cuid())
+  
+  // Relazione utente
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Dati gruppo
+  name        String     // Nome visualizzato (es. "Nike Air Force")
+  keyword     String     // Keyword comune a tutte le campagne
+  
+  // Filtri comuni (prezzo, include/exclude)
+  minPrice    Float?
+  maxPrice    Float?
+  includeKeywords String?  @db.Text
+  excludeKeywords String?  @db.Text
+  
+  // Stato
+  isActive    Boolean    @default(true)
+  
+  // Relazioni
+  campaigns   Campaign[]
+  
+  // Timestamps
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  @@index([userId])
+  @@index([isActive])
+}
+
 model Campaign {
   id          String    @id @default(cuid())
   
   // Relazione utente
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relazione gruppo (opzionale per backward compatibility)
+  groupId     String?
+  group       CampaignGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
   
   // Dati campagna
   name        String
@@ -127,6 +164,7 @@ model Campaign {
   @@index([isActive])
   @@index([nextRunAt])
   @@index([platform])
+  @@index([groupId])
 }
 
 enum Platform {

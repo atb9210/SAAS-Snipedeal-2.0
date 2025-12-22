@@ -17,23 +17,21 @@ import {
 } from 'lucide-react';
 import { platformConfig } from '@/lib/utils';
 import { CommonFilters, PlatformFilters } from '@/components/filters';
+import { PLATFORM_FILTERS, getEnabledPlatforms, MultiPlatformFilters } from '@/lib/platform-config';
 
 type Step = 1 | 2 | 3;
 
 interface FormData {
   name: string;
   keyword: string;
-  platform: string;
+  platforms: string[]; // Multi-select piattaforme
   // Filtri comuni
   minPrice: string;
   maxPrice: string;
   includeKeywords: string;
   excludeKeywords: string;
-  // Filtri Subito
-  region: string;
-  exactMatch: boolean;
-  // Filtri eBay
-  ebayLocation: string;
+  // Filtri per piattaforma (nested)
+  platformFilters: MultiPlatformFilters;
 }
 
 export default function NewCampaignPage() {
@@ -45,24 +43,52 @@ export default function NewCampaignPage() {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     keyword: '',
-    platform: 'SUBITO',
+    platforms: ['SUBITO'], // Default: solo Subito selezionato
     minPrice: '',
     maxPrice: '',
     includeKeywords: '',
     excludeKeywords: '',
-    region: '',
-    exactMatch: false,
-    ebayLocation: '',
+    platformFilters: {
+      SUBITO: { region: '', exactMatch: false },
+      EBAY: { location: '' },
+      VINTED: {},
+    },
   });
 
-  const updateForm = (field: keyof FormData, value: string | boolean) => {
+  const updateForm = (field: keyof FormData, value: string | boolean | string[] | MultiPlatformFilters) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  // Toggle piattaforma nel multi-select
+  const togglePlatform = (platform: string) => {
+    const current = formData.platforms;
+    const updated = current.includes(platform)
+      ? current.filter(p => p !== platform)
+      : [...current, platform];
+    // Almeno una piattaforma deve essere selezionata
+    if (updated.length > 0) {
+      setFormData({ ...formData, platforms: updated });
+    }
+  };
+
+  // Aggiorna filtro specifico per piattaforma
+  const updatePlatformFilter = (platform: string, field: string, value: string | boolean) => {
+    setFormData({
+      ...formData,
+      platformFilters: {
+        ...formData.platformFilters,
+        [platform]: {
+          ...formData.platformFilters[platform as keyof MultiPlatformFilters],
+          [field]: value,
+        },
+      },
+    });
   };
 
   const canProceed = () => {
     switch (step) {
       case 1:
-        return formData.keyword.trim().length > 0;
+        return formData.keyword.trim().length > 0 && formData.platforms.length > 0;
       case 2:
         return true; // Filtri opzionali
       case 3:
@@ -93,32 +119,19 @@ export default function NewCampaignPage() {
     setError('');
 
     try {
-      // Costruisci platformFilters in base alla piattaforma
-      let platformFilters: Record<string, unknown> = {};
-      if (formData.platform === 'SUBITO') {
-        platformFilters = {
-          region: formData.region || null,
-        };
-      } else if (formData.platform === 'EBAY') {
-        platformFilters = {
-          location: formData.ebayLocation || null,
-        };
-      }
-
-      const res = await fetch('/api/campaigns', {
+      // Multi-platform: crea gruppo + N campagne
+      const res = await fetch('/api/campaign-groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name || formData.keyword,
           keyword: formData.keyword,
-          platform: formData.platform,
+          platforms: formData.platforms,
           minPrice: formData.minPrice ? parseFloat(formData.minPrice) : null,
           maxPrice: formData.maxPrice ? parseFloat(formData.maxPrice) : null,
-          region: formData.platform === 'SUBITO' ? formData.region || null : null,
-          exactMatch: formData.exactMatch,
           includeKeywords: formData.includeKeywords || null,
           excludeKeywords: formData.excludeKeywords || null,
-          platformFilters: Object.keys(platformFilters).length > 0 ? platformFilters : null,
+          platformFilters: formData.platformFilters,
         }),
       });
 
@@ -130,8 +143,8 @@ export default function NewCampaignPage() {
         return;
       }
 
-      // Success! Redirect to campaign
-      router.push(`/campaigns/${data.id}`);
+      // Success! Redirect to campaigns list (il gruppo verrà mostrato aggregato)
+      router.push(`/campaigns`);
       router.refresh();
     } catch (err) {
       setError('Errore di connessione');
@@ -222,20 +235,20 @@ export default function NewCampaignPage() {
                   />
                 </div>
 
-                {/* Platform Selection */}
+                {/* Platform Selection - Multi-select */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Piattaforma
+                    Piattaforme <span className="text-gray-400 font-normal">(seleziona una o più)</span>
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {Object.entries(platformConfig).map(([key, config]) => {
                       const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED';
-                      const isSelected = formData.platform === key;
+                      const isSelected = formData.platforms.includes(key);
                       
                       return (
                         <button
                           key={key}
-                          onClick={() => isActive && updateForm('platform', key)}
+                          onClick={() => isActive && togglePlatform(key)}
                           disabled={!isActive}
                           className={`p-4 rounded-xl border-2 text-left transition-all ${
                             isSelected 
@@ -246,6 +259,12 @@ export default function NewCampaignPage() {
                           }`}
                         >
                           <div className="flex items-center gap-2">
+                            {/* Checkbox indicator */}
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                              isSelected ? 'bg-primary border-primary' : 'border-gray-300'
+                            }`}>
+                              {isSelected && <Check size={14} className="text-white" />}
+                            </div>
                             <config.icon size={24} className="text-gray-600" />
                             <span className="font-medium text-gray-900">
                               {config.name}
@@ -292,12 +311,65 @@ export default function NewCampaignPage() {
               </div>
 
               <div className="space-y-6">
-                {/* Filtri specifici per piattaforma */}
-                <PlatformFilters
-                  platform={formData.platform}
-                  values={formData}
-                  onChange={(field, value) => updateForm(field as keyof FormData, value)}
-                />
+                {/* Filtri specifici per ogni piattaforma selezionata */}
+                {formData.platforms.map((platform) => {
+                  const config = PLATFORM_FILTERS[platform];
+                  if (!config || config.filters.length === 0) return null;
+                  
+                  return (
+                    <div key={platform} className="bg-gray-50 rounded-xl p-4">
+                      <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                        {platformConfig[platform as keyof typeof platformConfig]?.icon && (
+                          <span className="text-gray-500">
+                            {(() => {
+                              const Icon = platformConfig[platform as keyof typeof platformConfig]?.icon;
+                              return Icon ? <Icon size={18} /> : null;
+                            })()}
+                          </span>
+                        )}
+                        Filtri {config.displayName}
+                      </h3>
+                      <div className="space-y-3">
+                        {config.filters.map((filter) => (
+                          <div key={filter.name}>
+                            {filter.type === 'select' && (
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">{filter.label}</label>
+                                <select
+                                  value={String(formData.platformFilters[platform as keyof MultiPlatformFilters]?.[filter.name as keyof typeof formData.platformFilters[keyof MultiPlatformFilters]] || '')}
+                                  onChange={(e) => updatePlatformFilter(platform, filter.name, e.target.value)}
+                                  className="input text-sm"
+                                >
+                                  {filter.options?.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            {filter.type === 'boolean' && (
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(formData.platformFilters[platform as keyof MultiPlatformFilters]?.[filter.name as keyof typeof formData.platformFilters[keyof MultiPlatformFilters]])}
+                                  onChange={(e) => updatePlatformFilter(platform, filter.name, e.target.checked)}
+                                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <span className="text-sm text-gray-700">{filter.label}</span>
+                              </label>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Messaggio se nessuna piattaforma ha filtri */}
+                {formData.platforms.every(p => !PLATFORM_FILTERS[p]?.filters.length) && (
+                  <div className="bg-gray-50 rounded-xl p-4 text-center text-gray-500">
+                    <p className="text-sm">Nessun filtro specifico per le piattaforme selezionate</p>
+                  </div>
+                )}
                 
                 {/* Separatore */}
                 <div className="border-t border-gray-100 pt-6">
@@ -343,14 +415,14 @@ export default function NewCampaignPage() {
               </div>
 
               <div className="space-y-6">
-                {/* Campaign Name - pre-compilato con keyword - marketplace */}
+                {/* Campaign Name - pre-compilato con keyword - piattaforme */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nome campagna
                   </label>
                   <input
                     type="text"
-                    value={formData.name || `${formData.keyword} - ${platformConfig[formData.platform as keyof typeof platformConfig]?.name || formData.platform}`}
+                    value={formData.name || `${formData.keyword} - ${formData.platforms.map(p => platformConfig[p as keyof typeof platformConfig]?.name || p).join(', ')}`}
                     onChange={(e) => updateForm('name', e.target.value)}
                     placeholder={formData.keyword || 'Nome campagna'}
                     className="input"
@@ -367,10 +439,14 @@ export default function NewCampaignPage() {
                       <span className="font-medium">{formData.keyword}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Piattaforma</span>
-                      <span className="font-medium">
-                        {platformConfig[formData.platform as keyof typeof platformConfig]?.name}
-                      </span>
+                      <span className="text-gray-500">Piattaforme</span>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {formData.platforms.map(p => (
+                          <span key={p} className="px-2 py-0.5 bg-primary-100 text-primary rounded text-xs font-medium">
+                            {platformConfig[p as keyof typeof platformConfig]?.name || p}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     {(formData.minPrice || formData.maxPrice) && (
                       <div className="flex justify-between">
@@ -382,23 +458,16 @@ export default function NewCampaignPage() {
                         </span>
                       </div>
                     )}
-                    {formData.platform === 'SUBITO' && formData.region && (
+                    {/* Filtri specifici per piattaforma */}
+                    {formData.platforms.includes('SUBITO') && formData.platformFilters.SUBITO?.region && (
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Regione</span>
-                        <span className="font-medium">{formData.region}</span>
+                        <span className="text-gray-500">Regione (Subito)</span>
+                        <span className="font-medium">{formData.platformFilters.SUBITO.region}</span>
                       </div>
                     )}
-                    {formData.platform === 'EBAY' && formData.ebayLocation && (
+                    {formData.platforms.includes('SUBITO') && formData.platformFilters.SUBITO?.exactMatch && (
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Provenienza</span>
-                        <span className="font-medium">
-                          {formData.ebayLocation === 'IT' ? 'Italia' : formData.ebayLocation === 'EU' ? 'Unione Europea' : 'Tutto il mondo'}
-                        </span>
-                      </div>
-                    )}
-                    {formData.exactMatch && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Ricerca esatta</span>
+                        <span className="text-gray-500">Ricerca esatta (Subito)</span>
                         <span className="font-medium text-primary">Attiva</span>
                       </div>
                     )}

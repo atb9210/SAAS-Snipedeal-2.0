@@ -28,9 +28,57 @@ interface Campaign {
   name: string;
   keyword: string;
   platform: string;
+  platforms?: string[]; // Per gruppi multi-platform
+  groupId?: string | null;
   isActive: boolean;
   lastRunAt: string | null;
   _count: { results: number };
+}
+
+// Aggrega campagne per groupId
+function aggregateCampaignsByGroup(campaigns: Campaign[]): Campaign[] {
+  const grouped = new Map<string, Campaign[]>();
+  const standalone: Campaign[] = [];
+
+  // Separa campagne con groupId da quelle standalone
+  campaigns.forEach(c => {
+    if (c.groupId) {
+      const existing = grouped.get(c.groupId) || [];
+      existing.push(c);
+      grouped.set(c.groupId, existing);
+    } else {
+      standalone.push(c);
+    }
+  });
+
+  // Crea campagne aggregate per ogni gruppo
+  const aggregated: Campaign[] = [];
+  grouped.forEach((groupCampaigns, groupId) => {
+    if (groupCampaigns.length === 0) return;
+    
+    // Usa la prima campagna come base, aggrega le altre
+    const first = groupCampaigns[0];
+    const aggregatedCampaign: Campaign = {
+      id: groupId, // Usa groupId come id per il link
+      name: first.name.replace(/ - (SUBITO|EBAY|VINTED|WALLAPOP)$/, ''), // Rimuovi suffisso piattaforma
+      keyword: first.keyword,
+      platform: groupCampaigns.map(c => c.platform).join(','), // Per compatibilità
+      platforms: groupCampaigns.map(c => c.platform), // Array piattaforme
+      groupId: groupId,
+      isActive: groupCampaigns.some(c => c.isActive), // Attivo se almeno una è attiva
+      lastRunAt: groupCampaigns.reduce((latest, c) => {
+        if (!c.lastRunAt) return latest;
+        if (!latest) return c.lastRunAt;
+        return new Date(c.lastRunAt) > new Date(latest) ? c.lastRunAt : latest;
+      }, null as string | null),
+      _count: {
+        results: groupCampaigns.reduce((sum, c) => sum + c._count.results, 0)
+      }
+    };
+    aggregated.push(aggregatedCampaign);
+  });
+
+  return [...aggregated, ...standalone];
 }
 
 interface CampaignsClientProps {
@@ -44,11 +92,14 @@ interface CampaignsClientProps {
 
 export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClientProps) {
   const router = useRouter();
-  const [campaigns, setCampaigns] = useState(initialCampaigns);
+  const [rawCampaigns, setRawCampaigns] = useState(initialCampaigns);
   const [filter, setFilter] = useState<'all' | 'active' | 'paused'>('all');
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
+
+  // Aggrega campagne per gruppo
+  const campaigns = aggregateCampaignsByGroup(rawCampaigns);
 
   const filteredCampaigns = campaigns.filter(c => {
     if (filter === 'active') return c.isActive;
@@ -63,7 +114,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
       if (!currentCampaign) return;
 
       // Ottimistic update - aggiorna subito l'UI
-      setCampaigns(campaigns.map(c =>
+      setRawCampaigns(rawCampaigns.map(c =>
         c.id === id ? { ...c, isActive: !c.isActive } : c
       ));
 
@@ -71,21 +122,21 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
 
       if (!res.ok) {
         // Se fallisce, ripristina lo stato originale
-        setCampaigns(campaigns.map(c =>
+        setRawCampaigns(rawCampaigns.map(c =>
           c.id === id ? { ...c, isActive: currentCampaign.isActive } : c
         ));
         console.error('Failed to toggle campaign');
       } else {
         // Aggiorna con i dati dal server per assicurare consistenza
         const updatedCampaign = await res.json();
-        setCampaigns(campaigns.map(c =>
+        setRawCampaigns(rawCampaigns.map(c =>
           c.id === id ? { ...c, ...updatedCampaign } : c
         ));
       }
     } catch (error) {
       console.error('Error toggling campaign:', error);
       // Ripristina lo stato in caso di errore
-      setCampaigns(campaigns.map(c =>
+      setRawCampaigns(rawCampaigns.map(c =>
         c.id === id ? { ...c, isActive: c.isActive } : c
       ));
     }
@@ -99,7 +150,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
     try {
       const res = await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        setCampaigns(campaigns.filter(c => c.id !== id));
+        setRawCampaigns(rawCampaigns.filter(c => c.id !== id));
       }
     } catch (error) {
       console.error('Error deleting campaign:', error);
@@ -114,7 +165,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
   useEffect(() => {
     const handleCampaignToggle = (event: CustomEvent) => {
       const { id, isActive } = event.detail;
-      setCampaigns(prev => prev.map(c =>
+      setRawCampaigns(prev => prev.map(c =>
         c.id === id ? { ...c, isActive } : c
       ));
     };
@@ -133,7 +184,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
         const res = await fetch('/api/campaigns');
         if (res.ok) {
           const updatedCampaigns = await res.json();
-          setCampaigns(updatedCampaigns);
+          setRawCampaigns(updatedCampaigns);
         }
       } catch (error) {
         console.error('Error refreshing campaigns:', error);
@@ -278,7 +329,9 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
         <motion.div layout className="space-y-3 pb-8">
           <AnimatePresence>
             {filteredCampaigns.map((campaign) => {
-              const platform = platformConfig[campaign.platform as keyof typeof platformConfig];
+              // Per campagne multi-platform, usa l'array platforms
+              const platforms = campaign.platforms || [campaign.platform];
+              const isMultiPlatform = platforms.length > 1;
               
               return (
                 <motion.div
@@ -289,7 +342,7 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
                   exit={{ opacity: 0, x: -100 }}
                   className="card relative"
                 >
-                  <Link href={`/campaigns/${campaign.id}`} className="block">
+                  <Link href={`/campaigns/${campaign.groupId || campaign.id}`} className="block">
                     <div className="flex items-start gap-3">
                       {/* Status Indicator */}
                       <div className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${
@@ -303,10 +356,25 @@ export function CampaignsClient({ initialCampaigns, planLimits }: CampaignsClien
                             <h3 className="font-semibold text-gray-900">
                               {campaign.name}
                             </h3>
-                            <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-1">
-                              {platform && <platform.icon size={16} className="text-gray-400" />}
-                              {campaign.keyword}
-                            </p>
+                            <div className="text-sm text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                              {/* Platform badges */}
+                              <div className="flex items-center gap-1">
+                                {platforms.map((p) => {
+                                  const pConfig = platformConfig[p as keyof typeof platformConfig];
+                                  return pConfig ? (
+                                    <span key={p} className="flex items-center" title={pConfig.name}>
+                                      <pConfig.icon size={16} className="text-gray-400" />
+                                    </span>
+                                  ) : null;
+                                })}
+                              </div>
+                              <span>{campaign.keyword}</span>
+                              {isMultiPlatform && (
+                                <span className="px-1.5 py-0.5 bg-primary-100 text-primary text-xs rounded font-medium">
+                                  Multi
+                                </span>
+                              )}
+                            </div>
                           </div>
                           
                           {/* Menu Button */}

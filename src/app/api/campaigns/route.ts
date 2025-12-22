@@ -35,7 +35,14 @@ export async function GET(request: NextRequest) {
 
     const campaigns = await prisma.campaign.findMany({
       where: { userId: session.user.id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        keyword: true,
+        platform: true,
+        groupId: true, // Per aggregazione multi-platform
+        isActive: true,
+        lastRunAt: true,
         _count: { select: { results: true } },
       },
       orderBy: { createdAt: 'desc' },

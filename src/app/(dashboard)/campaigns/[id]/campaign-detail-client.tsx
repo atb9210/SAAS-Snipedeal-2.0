@@ -65,6 +65,16 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
   const [showFilters, setShowFilters] = useState(false);
   const [filter, setFilter] = useState<'all' | 'new'>('all');
 
+  // Aggiorna results quando campaign.results cambia (es. navigazione tra gruppi)
+  useEffect(() => {
+    console.log('[CampaignDetailClient] Received', campaign.results.length, 'results');
+    console.log('[CampaignDetailClient] First 3 results:', campaign.results.slice(0, 3).map(r => r.title));
+    setResults(campaign.results);
+  }, [campaign.results]);
+
+  // Verifica se è un gruppo multi-platform
+  const isMultiPlatform = campaign.platform.includes(',');
+  const platforms = isMultiPlatform ? campaign.platform.split(',') : [campaign.platform];
   const platform = platformConfig[campaign.platform as keyof typeof platformConfig];
 
   const handleToggle = async () => {
@@ -147,8 +157,25 @@ export function CampaignDetailClient({ campaign, frequencyMins }: CampaignDetail
               {campaign.name}
             </h1>
             <p className="text-sm text-gray-500 flex items-center gap-1">
-              <platform.icon size={16} className="text-gray-400" />
-              {campaign.keyword}
+              {isMultiPlatform ? (
+                <>
+                  {platforms.map((p, i) => {
+                    const pConfig = platformConfig[p as keyof typeof platformConfig];
+                    return pConfig ? (
+                      <span key={p} className="flex items-center">
+                        <pConfig.icon size={16} className="text-gray-400" />
+                        {i < platforms.length - 1 && <span className="mx-1">+</span>}
+                      </span>
+                    ) : null;
+                  })}
+                  <span className="ml-2">Multi</span>
+                </>
+              ) : (
+                <>
+                  <platform.icon size={16} className="text-gray-400" />
+                  {campaign.keyword}
+                </>
+              )}
             </p>
           </div>
           <Link 
