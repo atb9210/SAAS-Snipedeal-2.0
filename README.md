@@ -4,7 +4,7 @@
 > Migrazione da Laravel a Next.js PWA completata. Sistema funzionante in locale ma ancora da testare completamente.  
 > Checkpoint: 2024-12-09
 
-Applicazione PWA per il monitoraggio automatico di annunci sui marketplace (Subito.it, eBay, Vinted, Wallapop, Facebook Marketplace).
+Applicazione PWA per il monitoraggio automatico di annunci sui marketplace (Subito.it, eBay, Vinted, Wallapop).
 
 ## 📋 Stato Migrazione
 

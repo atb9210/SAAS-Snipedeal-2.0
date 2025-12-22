@@ -5,9 +5,8 @@ import { BaseScraper, ScrapeOptions, ScrapeResult } from './base';
 import { SubitoScraper } from './subito';
 import { EbayScraper } from './ebay';
 import { VintedScraper } from './vinted';
-import { FacebookScraper } from './facebook';
 
-export type Platform = 'SUBITO' | 'EBAY' | 'VINTED' | 'WALLAPOP' | 'FACEBOOK';
+export type Platform = 'SUBITO' | 'EBAY' | 'VINTED' | 'WALLAPOP';
 
 // Scraper factory
 export function createScraper(platform: Platform): BaseScraper {
@@ -18,8 +17,6 @@ export function createScraper(platform: Platform): BaseScraper {
       return new EbayScraper();
     case 'VINTED':
       return new VintedScraper();
-    case 'FACEBOOK':
-      return new FacebookScraper();
     case 'WALLAPOP':
       throw new Error(`Scraper for ${platform} not yet implemented`);
     default:
@@ -29,7 +26,7 @@ export function createScraper(platform: Platform): BaseScraper {
 
 // Check if platform is supported
 export function isPlatformSupported(platform: Platform): boolean {
-  return ['SUBITO', 'EBAY', 'VINTED', 'FACEBOOK'].includes(platform);
+  return ['SUBITO', 'EBAY', 'VINTED'].includes(platform);
 }
 
 // Re-export types

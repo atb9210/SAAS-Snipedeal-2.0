@@ -3,7 +3,7 @@
 
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { SubitoIcon, EbayIcon, VintedIcon, FacebookIcon } from '@/components/icons/marketplace';
+import { SubitoIcon, EbayIcon, VintedIcon } from '@/components/icons/marketplace';
 
 // Merge Tailwind classes
 export function cn(...inputs: ClassValue[]) {
@@ -68,11 +68,6 @@ export const platformConfig = {
     name: 'Vinted',
     color: '#09B1BA',
     icon: VintedIcon,
-  },
-  FACEBOOK: {
-    name: 'FB Marketplace',
-    color: '#1877F2',
-    icon: FacebookIcon,
   },
 } as const;
 

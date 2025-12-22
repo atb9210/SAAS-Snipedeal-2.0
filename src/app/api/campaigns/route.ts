@@ -12,7 +12,7 @@ import { addScraperJob } from '@/lib/queue';
 const createCampaignSchema = z.object({
   name: z.string().min(1, 'Nome richiesto').max(100),
   keyword: z.string().min(1, 'Keyword richiesta').max(200),
-  platform: z.enum(['SUBITO', 'EBAY', 'VINTED', 'WALLAPOP', 'FACEBOOK']).default('SUBITO'),
+  platform: z.enum(['SUBITO', 'EBAY', 'VINTED', 'WALLAPOP']).default('SUBITO'),
   minPrice: z.number().min(0).nullable().optional(),
   maxPrice: z.number().min(0).nullable().optional(),
   region: z.string().nullable().optional(),

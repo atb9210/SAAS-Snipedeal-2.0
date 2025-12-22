@@ -11,7 +11,7 @@ import { z } from 'zod';
 const updateCampaignSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   keyword: z.string().min(1).max(200).optional(),
-  platform: z.enum(['SUBITO', 'EBAY', 'VINTED', 'WALLAPOP', 'FACEBOOK']).optional(),
+  platform: z.enum(['SUBITO', 'EBAY', 'VINTED', 'WALLAPOP']).optional(),
   minPrice: z.number().min(0).nullable().optional(),
   maxPrice: z.number().min(0).nullable().optional(),
   region: z.string().nullable().optional(),

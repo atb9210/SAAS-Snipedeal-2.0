@@ -6,13 +6,11 @@
 import { CommonFilters } from './CommonFilters';
 import { SubitoFilters } from './SubitoFilters';
 import { EbayFilters } from './EbayFilters';
-import { FacebookFilters } from './FacebookFilters';
 
 // Re-export componenti
 export { CommonFilters } from './CommonFilters';
 export { SubitoFilters } from './SubitoFilters';
 export { EbayFilters } from './EbayFilters';
-export { FacebookFilters } from './FacebookFilters';
 
 // Tipi per i filtri
 export interface FilterValues {
@@ -26,10 +24,6 @@ export interface FilterValues {
   exactMatch: boolean;
   // eBay
   ebayLocation: string;
-  // Facebook
-  facebookCity: string;
-  facebookExactMatch: boolean;
-  facebookFreeOnly: boolean;
 }
 
 interface PlatformFiltersProps {
@@ -55,15 +49,6 @@ export function PlatformFilters({ platform, values, onChange }: PlatformFiltersP
       return (
         <EbayFilters
           ebayLocation={values.ebayLocation}
-          onChange={onChange}
-        />
-      );
-    case 'FACEBOOK':
-      return (
-        <FacebookFilters
-          city={values.facebookCity}
-          exactMatch={values.facebookExactMatch}
-          freeOnly={values.facebookFreeOnly}
           onChange={onChange}
         />
       );

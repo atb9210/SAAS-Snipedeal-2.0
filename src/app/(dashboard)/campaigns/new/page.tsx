@@ -34,10 +34,6 @@ interface FormData {
   exactMatch: boolean;
   // Filtri eBay
   ebayLocation: string;
-  // Filtri Facebook
-  facebookCity: string;
-  facebookExactMatch: boolean;
-  facebookFreeOnly: boolean;
 }
 
 export default function NewCampaignPage() {
@@ -57,9 +53,6 @@ export default function NewCampaignPage() {
     region: '',
     exactMatch: false,
     ebayLocation: '',
-    facebookCity: 'Milano',
-    facebookExactMatch: false,
-    facebookFreeOnly: false,
   });
 
   const updateForm = (field: keyof FormData, value: string | boolean) => {
@@ -109,12 +102,6 @@ export default function NewCampaignPage() {
       } else if (formData.platform === 'EBAY') {
         platformFilters = {
           location: formData.ebayLocation || null,
-        };
-      } else if (formData.platform === 'FACEBOOK') {
-        platformFilters = {
-          city: formData.facebookCity || 'Milano',
-          exactMatch: formData.facebookExactMatch || false,
-          freeOnly: formData.facebookFreeOnly || false,
         };
       }
 
@@ -242,7 +229,7 @@ export default function NewCampaignPage() {
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     {Object.entries(platformConfig).map(([key, config]) => {
-                      const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED' || key === 'FACEBOOK';
+                      const isActive = key === 'SUBITO' || key === 'EBAY' || key === 'VINTED';
                       const isSelected = formData.platform === key;
                       
                       return (
@@ -409,25 +396,7 @@ export default function NewCampaignPage() {
                         </span>
                       </div>
                     )}
-                    {formData.platform === 'FACEBOOK' && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Città</span>
-                        <span className="font-medium">{formData.facebookCity}</span>
-                      </div>
-                    )}
-                    {formData.platform === 'FACEBOOK' && formData.facebookExactMatch && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Corrispondenza esatta</span>
-                        <span className="font-medium text-primary">Attiva</span>
-                      </div>
-                    )}
-                    {formData.platform === 'FACEBOOK' && formData.facebookFreeOnly && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Solo regalo</span>
-                        <span className="font-medium text-green-600">Attivo</span>
-                      </div>
-                    )}
-                    {formData.exactMatch && formData.platform !== 'FACEBOOK' && (
+                    {formData.exactMatch && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Ricerca esatta</span>
                         <span className="font-medium text-primary">Attiva</span>

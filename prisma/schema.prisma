@@ -134,7 +134,6 @@ enum Platform {
   EBAY
   VINTED
   WALLAPOP
-  FACEBOOK
 }
 
 // ============================================

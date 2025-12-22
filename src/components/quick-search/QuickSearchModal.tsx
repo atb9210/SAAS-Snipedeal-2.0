@@ -16,7 +16,7 @@ interface QuickSearchModalProps {
   onClose: () => void;
 }
 
-const availablePlatforms: Platform[] = ['SUBITO', 'EBAY', 'VINTED', 'FACEBOOK'];
+const availablePlatforms: Platform[] = ['SUBITO', 'EBAY', 'VINTED'];
 
 export function QuickSearchModal({ isOpen, onClose }: QuickSearchModalProps) {
   const [product, setProduct] = useState('');
