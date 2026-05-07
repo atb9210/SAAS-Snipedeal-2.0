@@ -1,10 +1,11 @@
-# Dockerfile.worker - Worker per job scraping SnipeDeal 2.0
-# Ottimizzato per Dokploy Production
-# Timestamp: 2024-12-12
+# Dockerfile.worker - Worker di scraping SnipeDeal 2.0
+# Esegue job BullMQ in background, usa Playwright (Chromium) per gli scraper.
+# Singolo stage: l'immagine pesa già ~1.5GB per Chromium, multi-stage
+# darebbe pochissimo guadagno e complicherebbe il setup di Playwright.
 
 FROM node:20-slim
 
-# Installa dipendenze sistema per Playwright + redis-cli per health checks
+# Dipendenze sistema per Chromium + Playwright + redis-cli (healthcheck)
 RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
@@ -36,24 +37,22 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copia package files
+# Install completo (incl. devDeps): tsx serve a runtime per eseguire il
+# worker .ts senza compile step. Il costo in dimensione immagine è
+# trascurabile rispetto a Chromium.
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm ci
 
-# Installa dipendenze dev necessarie per tsx
-RUN npm install tsx typescript @types/node
-
-# Copia sorgenti
+# Sorgenti
 COPY . .
 
-# Genera Prisma client
+# Prisma client
 RUN npx prisma generate
 
-# Installa browser Playwright (Chromium)
-RUN npx playwright install chromium --with-deps
+# Browser Playwright (le system-deps sopra coprono tutto, evitiamo --with-deps
+# che rifarebbe apt-get update inutilmente)
+RUN npx playwright install chromium
 
-# Variabili ambiente
 ENV NODE_ENV=production
 
-# Avvia worker
 CMD ["npx", "tsx", "src/workers/scraper-worker.ts"]

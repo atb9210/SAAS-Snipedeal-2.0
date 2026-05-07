@@ -1,0 +1,50 @@
+# Dependencies (verranno reinstallate dentro al container)
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+.next
+out
+dist
+build
+
+# Env locali (mai dentro all'immagine)
+.env
+.env.*
+!.env.example
+!env.local.example
+!env.dokploy.example
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentazione e contesto progetto: pesano e non servono a runtime
+docs
+context chat
+*.md
+!README.md
+
+# File compose (l'immagine non li usa, vivono solo lato Dokploy/host)
+docker-compose*.yml
+docker/mysql
+
+# Test e coverage
+coverage
+.nyc_output
+
+# Misc
+*.log
+*.tsbuildinfo
+next-env.d.ts
