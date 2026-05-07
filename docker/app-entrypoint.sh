@@ -5,7 +5,10 @@
 set -e
 
 echo "[entrypoint] Syncing Prisma schema (db push)..."
-./node_modules/.bin/prisma db push \
+# Invochiamo l'entry JS reale del pacchetto, non il symlink in .bin/.
+# Docker dereferenzia i symlink durante la COPY: usare .bin/prisma rompe i
+# percorsi relativi che il CLI usa per caricare i WASM (__dirname sbagliato).
+node ./node_modules/prisma/build/index.js db push \
   --schema=./prisma/schema.prisma \
   --skip-generate \
   --accept-data-loss
