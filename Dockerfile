@@ -36,6 +36,18 @@ ENV DATABASE_URL="mysql://dummy:dummy@localhost:3306/dummy"
 RUN npx prisma generate
 RUN npm run build
 
+# Compila prisma/seed.ts -> prisma/seed.js cosicche` l'entrypoint possa
+# eseguirlo con `node` nel runner senza richiedere ts-node/tsx.
+# Il file .js viene poi copiato gratis dal `COPY /app/prisma ./prisma` del runner.
+RUN npx tsc \
+    --skipLibCheck \
+    --target es2020 \
+    --module commonjs \
+    --esModuleInterop \
+    --resolveJsonModule \
+    --outDir prisma \
+    prisma/seed.ts
+
 # ============================================
 # RUNNER - immagine finale di produzione
 # ============================================

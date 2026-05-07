@@ -13,5 +13,10 @@ node ./node_modules/prisma/build/index.js db push \
   --skip-generate \
   --accept-data-loss
 
+echo "[entrypoint] Seeding (idempotente: piani + utenti demo)..."
+# Il seed e` idempotente (upsert su email, skipDuplicates sui piani):
+# rilanciarlo a ogni boot non duplica nulla. Non blocchiamo l'avvio se fallisce.
+node ./prisma/seed.js || echo "[entrypoint] Seed skipped (errore non fatale)"
+
 echo "[entrypoint] Starting Next.js server..."
 exec node server.js
