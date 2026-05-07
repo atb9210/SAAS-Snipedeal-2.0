@@ -72,6 +72,11 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
+# bcryptjs serve a prisma/seed.js (require diretto). Il trace standalone di
+# Next.js lo include per le route /api/auth/*, ma in una posizione non
+# raggiungibile dal seed.js: copiamolo esplicitamente.
+COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
+
 # Entrypoint
 COPY --chown=nextjs:nodejs docker/app-entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
