@@ -68,6 +68,45 @@ async function main() {
   }
 
   // ============================================
+  // SEED PROXY PROVIDERS (Floppydata)
+  // ============================================
+  console.log('🔌 Configuring proxy providers...');
+
+  const apiKey = process.env.FLOPPYDATA_API_KEY;
+  const baseUrl = process.env.FLOPPYDATA_BASE_URL || 'https://client-api.floppy.host';
+  const defaultCountry = process.env.FLOPPYDATA_DEFAULT_COUNTRY || 'IT';
+
+  if (apiKey) {
+    await prisma.proxyProvider.upsert({
+      where: { name: 'floppydata' },
+      update: {
+        displayName: 'Floppydata Webunlocker',
+        isEnabled: true,
+        isDefault: true,
+        config: {
+          apiKey,
+          baseUrl,
+          defaultCountry,
+        },
+      },
+      create: {
+        name: 'floppydata',
+        displayName: 'Floppydata Webunlocker',
+        isEnabled: true,
+        isDefault: true,
+        config: {
+          apiKey,
+          baseUrl,
+          defaultCountry,
+        },
+      },
+    });
+    console.log('  ✅ Floppydata provider configured');
+  } else {
+    console.log('  ⚠️  Floppydata provider skipped (FLOPPYDATA_API_KEY not set)');
+  }
+
+  // ============================================
   // SEED UTENTI DEFAULT
   // ============================================
   console.log('👤 Creating default users...');

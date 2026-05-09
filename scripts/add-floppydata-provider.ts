@@ -8,6 +8,15 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Adding Floppydata provider to database...\n');
 
+  const apiKey = process.env.FLOPPYDATA_API_KEY;
+  if (!apiKey) {
+    console.error('Error: FLOPPYDATA_API_KEY environment variable is required');
+    process.exit(1);
+  }
+
+  const baseUrl = process.env.FLOPPYDATA_BASE_URL || 'https://client-api.floppy.host';
+  const defaultCountry = process.env.FLOPPYDATA_DEFAULT_COUNTRY || 'IT';
+
   const provider = await prisma.proxyProvider.upsert({
     where: { name: 'floppydata' },
     update: {
@@ -15,9 +24,9 @@ async function main() {
       isEnabled: true,
       isDefault: true,
       config: {
-        apiKey: 'bniEz9eGfe1xtwtjXNLWBkWMtkQPHqQE',
-        baseUrl: 'https://client-api.floppy.host',
-        defaultCountry: 'IT',
+        apiKey,
+        baseUrl,
+        defaultCountry,
       },
     },
     create: {
@@ -26,9 +35,9 @@ async function main() {
       isEnabled: true,
       isDefault: true,
       config: {
-        apiKey: 'bniEz9eGfe1xtwtjXNLWBkWMtkQPHqQE',
-        baseUrl: 'https://client-api.floppy.host',
-        defaultCountry: 'IT',
+        apiKey,
+        baseUrl,
+        defaultCountry,
       },
     },
   });

@@ -1,7 +1,12 @@
 async function testFloppydataWebunlocker() {
   console.log('=== TEST FLOPPYDATA WEBUNLOCKER ===\n');
 
-  const apiKey = 'bniEz9eGfe1xtwtjXNLWBkWMtkQPHqQE';
+  const apiKey = process.env.FLOPPYDATA_API_KEY;
+  if (!apiKey) {
+    console.error('Error: FLOPPYDATA_API_KEY environment variable is required');
+    process.exit(1);
+  }
+
   const url = 'https://www.subito.it/annunci-italia/vendita/usato/?q=iphone&order=datedesc';
 
   console.log(`Testing URL: ${url}`);
