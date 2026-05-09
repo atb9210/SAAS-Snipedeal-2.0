@@ -10,12 +10,14 @@ import {
   ProviderConfig,
 } from './base';
 import { PacketstreamProvider } from './packetstream';
+import { FloppydataProvider } from './floppydata';
 
 /**
  * Registry dei provider supportati
  */
 const providerFactories: Record<string, (config: ProviderConfig) => ProxyProviderService> = {
   packetstream: (config) => new PacketstreamProvider(config as PacketstreamConfig),
+  floppydata: (config) => new FloppydataProvider(config as any),
   // Aggiungi altri provider qui in futuro:
   // brightdata: (config) => new BrightDataProvider(config as BrightDataConfig),
   // oxylabs: (config) => new OxylabsProvider(config as OxylabsConfig),
