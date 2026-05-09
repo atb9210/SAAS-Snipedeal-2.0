@@ -146,8 +146,8 @@ export class EbayScraper extends BaseScraper {
       const proxyManager = getProxyManager();
       await proxyManager.initialize();
 
-      // Ottieni provider Floppydata
-      const floppydataProvider = proxyManager['providers'].get('floppydata') as FloppydataProvider;
+      // Ottieni provider Floppydata per nome
+      const floppydataProvider = proxyManager.getProviderByName('floppydata') as FloppydataProvider;
 
       if (!floppydataProvider) {
         this.log('Floppydata provider not found', 'warn');
@@ -159,7 +159,7 @@ export class EbayScraper extends BaseScraper {
           const url = this.buildUrl(keyword, location, page);
           this.log(`Floppydata: fetching page ${page}`);
 
-          const html = await floppydataProvider.fetchHtml(url, 'Italy');
+          const html = await floppydataProvider.fetchHtml(url, 'IT');
 
           if (!html) {
             this.log(`Floppydata failed on page ${page}`, 'warn');

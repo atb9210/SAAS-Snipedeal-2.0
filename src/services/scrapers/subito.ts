@@ -148,8 +148,8 @@ export class SubitoScraper extends BaseScraper {
       const proxyManager = getProxyManager();
       await proxyManager.initialize();
 
-      // Ottieni provider Floppydata
-      const floppydataProvider = proxyManager['providers'].get('floppydata') as FloppydataProvider;
+      // Ottieni provider Floppydata per nome
+      const floppydataProvider = proxyManager.getProviderByName('floppydata') as FloppydataProvider;
 
       if (!floppydataProvider) {
         this.log('Floppydata provider not found', 'warn');
@@ -161,7 +161,8 @@ export class SubitoScraper extends BaseScraper {
           const url = this.buildUrl(keyword, region, page);
           this.log(`Floppydata: fetching page ${page}`);
 
-          const html = await floppydataProvider.fetchHtml(url, 'Italy');
+          // Use 'medium' difficulty for Subito (more aggressive bypass)
+          const html = await floppydataProvider.fetchHtml(url, 'IT', 'medium');
 
           if (!html) {
             this.log(`Floppydata failed on page ${page}`, 'warn');
@@ -170,7 +171,17 @@ export class SubitoScraper extends BaseScraper {
 
           const pageAds = this.parseNextJsData(html);
 
-          this.log(`Floppydata page ${page}: found ${pageAds.length} ads`);
+          this.log(`Floppydata page ${page}: found ${pageAds.length} ads (html: ${html.length} bytes)`);
+
+          // Debug: if no ads found, log what's in the HTML
+          if (pageAds.length === 0) {
+            const hasNextData = html.includes('__NEXT_DATA__');
+            const hasCaptcha = html.toLowerCase().includes('captcha') || html.toLowerCase().includes('cloudflare');
+            const hasBlock = html.toLowerCase().includes('blocked') || html.toLowerCase().includes('access denied');
+            this.log(`Debug: hasNextData=${hasNextData}, hasCaptcha=${hasCaptcha}, hasBlock=${hasBlock}`, 'warn');
+            this.log(`HTML preview (first 500 chars): ${html.substring(0, 500)}`, 'warn');
+          }
+
           ads.push(...pageAds);
 
         } catch (error) {
@@ -426,13 +437,17 @@ export class SubitoScraper extends BaseScraper {
       // Navigate to items list
       let itemsList: any[] = [];
       
-      // Path 1: props.pageProps.initialState.items.list
-      if (jsonData?.props?.pageProps?.initialState?.items?.list) {
+      // Path 1: props.pageProps.initialState.items.originalList (NEW Subito structure)
+      if (jsonData?.props?.pageProps?.initialState?.items?.originalList) {
+        itemsList = jsonData.props.pageProps.initialState.items.originalList;
+      }
+      // Path 2: props.pageProps.initialState.items.list (legacy)
+      else if (jsonData?.props?.pageProps?.initialState?.items?.list) {
         itemsList = jsonData.props.pageProps.initialState.items.list;
       }
-      // Path 2: Try to find recursively
+      // Path 3: Try to find recursively
       else {
-        itemsList = this.findInObject(jsonData, 'list') || [];
+        itemsList = this.findInObject(jsonData, 'originalList') || this.findInObject(jsonData, 'list') || [];
       }
 
       for (const listItem of itemsList) {

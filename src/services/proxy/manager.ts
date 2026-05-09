@@ -269,10 +269,23 @@ export class ProxyManager {
   getSupportedProviders(): Array<{ name: string; displayName: string }> {
     return [
       { name: 'packetstream', displayName: 'Packetstream' },
+      { name: 'floppydata', displayName: 'Floppydata Webunlocker' },
       // Aggiungi altri provider qui in futuro
       // { name: 'brightdata', displayName: 'BrightData' },
       // { name: 'oxylabs', displayName: 'Oxylabs' },
     ];
+  }
+
+  /**
+   * Ottiene un provider per nome
+   */
+  getProviderByName(name: string): ProxyProviderService | null {
+    for (const [id, provider] of this.providers) {
+      if (provider.name === name) {
+        return provider;
+      }
+    }
+    return null;
   }
 }
 

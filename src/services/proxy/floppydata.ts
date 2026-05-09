@@ -118,26 +118,65 @@ export class FloppydataProvider implements ProxyProviderService {
     try {
       const targetCountry = country || this.config.defaultCountry;
 
+      const requestBody = {
+        url,
+        country: targetCountry,
+        difficulty,
+        expiration,
+      };
+
+      console.log(`[FloppydataProvider] Request:`, {
+        url: `${this.config.baseUrl}/v1/webUnlocker`,
+        targetUrl: url,
+        country: targetCountry,
+        difficulty,
+        expiration,
+      });
+
       const response = await fetch(`${this.config.baseUrl}/v1/webUnlocker`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Api-Key': this.config.apiKey,
         },
-        body: JSON.stringify({
-          url,
-          country: targetCountry,
-          difficulty,
-          expiration,
-        }),
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log(`[FloppydataProvider] Response:`, {
+        status: response.status,
+        statusText: response.statusText,
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
         console.error(`[FloppydataProvider] HTTP ${response.status}: ${response.statusText}`);
+        console.error(`[FloppydataProvider] Error body:`, errorText);
         return null;
       }
 
       const data = await response.json();
+      console.log(`[FloppydataProvider] Success:`, {
+        hasHtml: !!data.html,
+        htmlLength: data.html?.length || 0,
+      });
+
+      // DEBUG: dump HTML to /tmp/floppydata-dumps for inspection
+      if (process.env.FLOPPYDATA_DEBUG_DUMP === '1' && data.html) {
+        try {
+          const fs = await import('fs');
+          const path = await import('path');
+          const dir = '/tmp/floppydata-dumps';
+          fs.mkdirSync(dir, { recursive: true });
+          const safeUrl = url.replace(/[^a-z0-9]/gi, '_').substring(0, 80);
+          const ts = Date.now();
+          const filename = path.join(dir, `${ts}_${safeUrl}_${data.html.length}b.html`);
+          fs.writeFileSync(filename, data.html);
+          console.log(`[FloppydataProvider] HTML dumped: ${filename}`);
+        } catch (e) {
+          console.error(`[FloppydataProvider] Dump error:`, e);
+        }
+      }
+
       return data.html || null;
     } catch (error) {
       console.error(`[FloppydataProvider] Fetch error:`, error);

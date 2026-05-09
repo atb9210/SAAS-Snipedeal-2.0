@@ -3,6 +3,7 @@
 
 import { BaseScraper, ScrapeOptions, ScrapeResult, ScrapedAd } from './base';
 import { getProxyManager, ProxyUrl } from '../proxy';
+import { FloppydataProvider } from '../proxy/floppydata';
 
 export class VintedScraper extends BaseScraper {
   private proxy: ProxyUrl | null = null;
@@ -32,6 +33,27 @@ export class VintedScraper extends BaseScraper {
     }
 
     try {
+      // Prima prova scraping con Floppydata (primary - bypassa anti-bot)
+      this.log('Trying Floppydata Webunlocker...');
+      const floppydataResult = await this.scrapeViaFloppydata(keyword, maxPages);
+
+      if (floppydataResult.ads.length > 0) {
+        const filteredAds = floppydataResult.ads.filter(ad =>
+          this.matchesPriceFilter(ad.price, minPrice, maxPrice)
+        );
+
+        this.log(`Floppydata: Found ${filteredAds.length} ads (filtered from ${floppydataResult.ads.length})`);
+
+        return {
+          success: true,
+          ads: filteredAds,
+          totalFound: filteredAds.length,
+          scrapedAt: new Date(),
+        };
+      }
+
+      // Fallback: scraping HTTP con proxy
+      this.log('Floppydata returned no results, trying HTTP with proxy...');
       const allAds: ScrapedAd[] = [];
 
       for (let page = 1; page <= maxPages; page++) {
@@ -81,6 +103,53 @@ export class VintedScraper extends BaseScraper {
         scrapedAt: new Date(),
       };
     }
+  }
+
+  private async scrapeViaFloppydata(
+    keyword: string,
+    maxPages: number
+  ): Promise<{ ads: ScrapedAd[] }> {
+    const ads: ScrapedAd[] = [];
+
+    try {
+      const proxyManager = getProxyManager();
+      await proxyManager.initialize();
+
+      const floppydataProvider = proxyManager.getProviderByName('floppydata') as FloppydataProvider;
+
+      if (!floppydataProvider) {
+        this.log('Floppydata provider not found', 'warn');
+        return { ads };
+      }
+
+      for (let page = 1; page <= maxPages; page++) {
+        try {
+          const url = this.buildUrl(keyword, page);
+          this.log(`Floppydata: fetching page ${page}`);
+
+          // Use 'medium' difficulty (Vinted has Cloudflare protection)
+          const html = await floppydataProvider.fetchHtml(url, 'IT', 'medium');
+
+          if (!html) {
+            this.log(`Floppydata failed on page ${page}`, 'warn');
+            continue;
+          }
+
+          const pageAds = this.parseVintedHtml(html);
+
+          this.log(`Floppydata page ${page}: found ${pageAds.length} ads (html: ${html.length} bytes)`);
+          ads.push(...pageAds);
+
+        } catch (error) {
+          this.log(`Floppydata error on page ${page}: ${error}`, 'warn');
+        }
+      }
+
+    } catch (error) {
+      this.log(`Floppydata provider error: ${error}`, 'warn');
+    }
+
+    return { ads };
   }
 
   private buildUrl(keyword: string, page: number): string {
