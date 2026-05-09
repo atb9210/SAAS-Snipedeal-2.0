@@ -10,12 +10,14 @@ import {
   ProviderConfig,
 } from './base';
 import { PacketstreamProvider } from './packetstream';
+import { FloppydataProvider } from './floppydata';
 
 /**
  * Registry dei provider supportati
  */
 const providerFactories: Record<string, (config: ProviderConfig) => ProxyProviderService> = {
   packetstream: (config) => new PacketstreamProvider(config as PacketstreamConfig),
+  floppydata: (config) => new FloppydataProvider(config),
   // Aggiungi altri provider qui in futuro:
   // brightdata: (config) => new BrightDataProvider(config as BrightDataConfig),
   // oxylabs: (config) => new OxylabsProvider(config as OxylabsConfig),
@@ -267,6 +269,7 @@ export class ProxyManager {
   getSupportedProviders(): Array<{ name: string; displayName: string }> {
     return [
       { name: 'packetstream', displayName: 'Packetstream' },
+      { name: 'floppydata', displayName: 'Floppydata Webunlocker' },
       // Aggiungi altri provider qui in futuro
       // { name: 'brightdata', displayName: 'BrightData' },
       // { name: 'oxylabs', displayName: 'Oxylabs' },
