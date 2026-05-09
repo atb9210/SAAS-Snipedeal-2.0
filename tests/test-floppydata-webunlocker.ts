@@ -75,7 +75,7 @@ async function testFloppydataWebunlocker() {
     const subjectMatches = html.match(/"subject":"[^"]*"/g);
     if (subjectMatches && subjectMatches.length > 0) {
       console.log('\nFirst 3 subjects:');
-      subjectMatches.slice(0, 3).forEach((match, i) => {
+      subjectMatches.slice(0, 3).forEach((match: string, i: number) => {
         console.log(`${i + 1}. ${match}`);
       });
     }
@@ -84,7 +84,7 @@ async function testFloppydataWebunlocker() {
     const priceMatches = html.match(/"price":\s*\{[^}]*"value":\s*"[^"]*"/g);
     if (priceMatches && priceMatches.length > 0) {
       console.log('\nFirst 3 prices:');
-      priceMatches.slice(0, 3).forEach((match, i) => {
+      priceMatches.slice(0, 3).forEach((match: string, i: number) => {
         console.log(`${i + 1}. ${match}`);
       });
     }
