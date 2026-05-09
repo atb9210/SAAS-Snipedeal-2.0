@@ -5,6 +5,7 @@
 import { chromium, Browser } from 'playwright';
 import { BaseScraper, ScrapeOptions, ScrapeResult, ScrapedAd } from './base';
 import { getProxyManager, ProxyUrl } from '../proxy';
+import { FloppydataProvider } from '../proxy/floppydata';
 
 // Mappa regioni italiane -> URL Subito.it
 const REGION_URL_MAP: Record<string, string> = {
@@ -65,17 +66,18 @@ export class SubitoScraper extends BaseScraper {
     }
 
     try {
-      // Prima prova scraping HTTP (più veloce)
-      const httpResult = await this.scrapeViaHttp(keyword, region, maxPages);
-      
-      if (httpResult.ads.length > 0) {
+      // Prima prova scraping con Floppydata (primary - bypassa DataDome)
+      this.log('Trying Floppydata Webunlocker...');
+      const floppydataResult = await this.scrapeViaFloppydata(keyword, region, maxPages);
+
+      if (floppydataResult.ads.length > 0) {
         // Filtra per prezzo
-        const filteredAds = httpResult.ads.filter(ad => 
+        const filteredAds = floppydataResult.ads.filter(ad =>
           this.matchesPriceFilter(ad.price, minPrice, maxPrice)
         );
 
-        this.log(`Found ${filteredAds.length} ads (filtered from ${httpResult.ads.length})`);
-        
+        this.log(`Floppydata: Found ${filteredAds.length} ads (filtered from ${floppydataResult.ads.length})`);
+
         return {
           success: true,
           ads: filteredAds,
@@ -84,11 +86,31 @@ export class SubitoScraper extends BaseScraper {
         };
       }
 
-      // Fallback: prova con Playwright (browser headless)
+      // Fallback 1: prova scraping HTTP con proxy
+      this.log('Floppydata returned no results, trying HTTP with proxy...');
+      const httpResult = await this.scrapeViaHttp(keyword, region, maxPages);
+
+      if (httpResult.ads.length > 0) {
+        // Filtra per prezzo
+        const filteredAds = httpResult.ads.filter(ad =>
+          this.matchesPriceFilter(ad.price, minPrice, maxPrice)
+        );
+
+        this.log(`HTTP: Found ${filteredAds.length} ads (filtered from ${httpResult.ads.length})`);
+
+        return {
+          success: true,
+          ads: filteredAds,
+          totalFound: filteredAds.length,
+          scrapedAt: new Date(),
+        };
+      }
+
+      // Fallback 2: prova con Playwright (browser headless)
       this.log('HTTP scraping returned no results, trying Playwright...');
       const playwrightResult = await this.scrapeViaPlaywright(keyword, region, maxPages);
-      
-      const filteredAds = playwrightResult.ads.filter(ad => 
+
+      const filteredAds = playwrightResult.ads.filter(ad =>
         this.matchesPriceFilter(ad.price, minPrice, maxPrice)
       );
 
@@ -115,9 +137,68 @@ export class SubitoScraper extends BaseScraper {
     }
   }
 
+  private async scrapeViaFloppydata(
+    keyword: string,
+    region: string | null | undefined,
+    maxPages: number
+  ): Promise<{ ads: ScrapedAd[] }> {
+    const ads: ScrapedAd[] = [];
+
+    try {
+      const proxyManager = getProxyManager();
+      await proxyManager.initialize();
+
+      // Ottieni provider Floppydata per nome
+      const floppydataProvider = proxyManager.getProviderByName('floppydata') as FloppydataProvider;
+
+      if (!floppydataProvider) {
+        this.log('Floppydata provider not found', 'warn');
+        return { ads };
+      }
+
+      for (let page = 1; page <= maxPages; page++) {
+        try {
+          const url = this.buildUrl(keyword, region, page);
+          this.log(`Floppydata: fetching page ${page}`);
+
+          // Use 'medium' difficulty for Subito (more aggressive bypass)
+          const html = await floppydataProvider.fetchHtml(url, 'IT', 'medium');
+
+          if (!html) {
+            this.log(`Floppydata failed on page ${page}`, 'warn');
+            continue;
+          }
+
+          const pageAds = this.parseNextJsData(html);
+
+          this.log(`Floppydata page ${page}: found ${pageAds.length} ads (html: ${html.length} bytes)`);
+
+          // Debug: if no ads found, log what's in the HTML
+          if (pageAds.length === 0) {
+            const hasNextData = html.includes('__NEXT_DATA__');
+            const hasCaptcha = html.toLowerCase().includes('captcha') || html.toLowerCase().includes('cloudflare');
+            const hasBlock = html.toLowerCase().includes('blocked') || html.toLowerCase().includes('access denied');
+            this.log(`Debug: hasNextData=${hasNextData}, hasCaptcha=${hasCaptcha}, hasBlock=${hasBlock}`, 'warn');
+            this.log(`HTML preview (first 500 chars): ${html.substring(0, 500)}`, 'warn');
+          }
+
+          ads.push(...pageAds);
+
+        } catch (error) {
+          this.log(`Floppydata error on page ${page}: ${error}`, 'warn');
+        }
+      }
+
+    } catch (error) {
+      this.log(`Floppydata provider error: ${error}`, 'warn');
+    }
+
+    return { ads };
+  }
+
   private async scrapeViaHttp(
-    keyword: string, 
-    region: string | null | undefined, 
+    keyword: string,
+    region: string | null | undefined,
     maxPages: number
   ): Promise<{ ads: ScrapedAd[] }> {
     const ads: ScrapedAd[] = [];
@@ -135,7 +216,7 @@ export class SubitoScraper extends BaseScraper {
         }
 
         const pageAds = this.parseNextJsData(html);
-        
+
         this.log(`Page ${page}: found ${pageAds.length} ads`);
         ads.push(...pageAds);
 
@@ -356,13 +437,17 @@ export class SubitoScraper extends BaseScraper {
       // Navigate to items list
       let itemsList: any[] = [];
       
-      // Path 1: props.pageProps.initialState.items.list
-      if (jsonData?.props?.pageProps?.initialState?.items?.list) {
+      // Path 1: props.pageProps.initialState.items.originalList (NEW Subito structure)
+      if (jsonData?.props?.pageProps?.initialState?.items?.originalList) {
+        itemsList = jsonData.props.pageProps.initialState.items.originalList;
+      }
+      // Path 2: props.pageProps.initialState.items.list (legacy)
+      else if (jsonData?.props?.pageProps?.initialState?.items?.list) {
         itemsList = jsonData.props.pageProps.initialState.items.list;
       }
-      // Path 2: Try to find recursively
+      // Path 3: Try to find recursively
       else {
-        itemsList = this.findInObject(jsonData, 'list') || [];
+        itemsList = this.findInObject(jsonData, 'originalList') || this.findInObject(jsonData, 'list') || [];
       }
 
       for (const listItem of itemsList) {

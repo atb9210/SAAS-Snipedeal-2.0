@@ -3,6 +3,7 @@
 
 import { BaseScraper, ScrapeOptions, ScrapeResult, ScrapedAd } from './base';
 import { getProxyManager, ProxyUrl } from '../proxy';
+import { FloppydataProvider } from '../proxy/floppydata';
 
 // Mappa provenienza -> parametro LH_PrefLoc
 const LOCATION_MAP: Record<string, string> = {
@@ -43,6 +44,28 @@ export class EbayScraper extends BaseScraper {
     }
 
     try {
+      // Prima prova scraping con Floppydata (primary - bypassa anti-bot)
+      this.log('Trying Floppydata Webunlocker...');
+      const floppydataResult = await this.scrapeViaFloppydata(keyword, location, maxPages);
+
+      if (floppydataResult.ads.length > 0) {
+        // Filtra per prezzo
+        const filteredAds = floppydataResult.ads.filter(ad =>
+          this.matchesPriceFilter(ad.price, minPrice, maxPrice)
+        );
+
+        this.log(`Floppydata: Found ${filteredAds.length} ads (filtered from ${floppydataResult.ads.length})`);
+
+        return {
+          success: true,
+          ads: filteredAds,
+          totalFound: filteredAds.length,
+          scrapedAt: new Date(),
+        };
+      }
+
+      // Fallback: prova scraping HTTP con proxy
+      this.log('Floppydata returned no results, trying HTTP with proxy...');
       const allAds: ScrapedAd[] = [];
 
       for (let page = 1; page <= maxPages; page++) {
@@ -62,11 +85,11 @@ export class EbayScraper extends BaseScraper {
       }
 
       // Filtra per prezzo
-      const filteredAds = allAds.filter(ad => 
+      const filteredAds = allAds.filter(ad =>
         this.matchesPriceFilter(ad.price, minPrice, maxPrice)
       );
 
-      this.log(`Found ${filteredAds.length} ads (filtered from ${allAds.length})`);
+      this.log(`HTTP: Found ${filteredAds.length} ads (filtered from ${allAds.length})`);
 
       return {
         success: true,
@@ -110,6 +133,54 @@ export class EbayScraper extends BaseScraper {
     }
 
     return `https://www.ebay.it/sch/i.html?${params.toString()}`;
+  }
+
+  private async scrapeViaFloppydata(
+    keyword: string,
+    location: string,
+    maxPages: number
+  ): Promise<{ ads: ScrapedAd[] }> {
+    const ads: ScrapedAd[] = [];
+
+    try {
+      const proxyManager = getProxyManager();
+      await proxyManager.initialize();
+
+      // Ottieni provider Floppydata per nome
+      const floppydataProvider = proxyManager.getProviderByName('floppydata') as FloppydataProvider;
+
+      if (!floppydataProvider) {
+        this.log('Floppydata provider not found', 'warn');
+        return { ads };
+      }
+
+      for (let page = 1; page <= maxPages; page++) {
+        try {
+          const url = this.buildUrl(keyword, location, page);
+          this.log(`Floppydata: fetching page ${page}`);
+
+          const html = await floppydataProvider.fetchHtml(url, 'IT');
+
+          if (!html) {
+            this.log(`Floppydata failed on page ${page}`, 'warn');
+            continue;
+          }
+
+          const pageAds = this.parseEbayHtml(html);
+
+          this.log(`Floppydata page ${page}: found ${pageAds.length} ads`);
+          ads.push(...pageAds);
+
+        } catch (error) {
+          this.log(`Floppydata error on page ${page}: ${error}`, 'warn');
+        }
+      }
+
+    } catch (error) {
+      this.log(`Floppydata provider error: ${error}`, 'warn');
+    }
+
+    return { ads };
   }
 
   private async fetchWithProxy(url: string): Promise<string | null> {

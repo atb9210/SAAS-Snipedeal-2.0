@@ -17,7 +17,7 @@ import { FloppydataProvider } from './floppydata';
  */
 const providerFactories: Record<string, (config: ProviderConfig) => ProxyProviderService> = {
   packetstream: (config) => new PacketstreamProvider(config as PacketstreamConfig),
-  floppydata: (config) => new FloppydataProvider(config),
+  floppydata: (config) => new FloppydataProvider(config as any),
   // Aggiungi altri provider qui in futuro:
   // brightdata: (config) => new BrightDataProvider(config as BrightDataConfig),
   // oxylabs: (config) => new OxylabsProvider(config as OxylabsConfig),
@@ -274,6 +274,18 @@ export class ProxyManager {
       // { name: 'brightdata', displayName: 'BrightData' },
       // { name: 'oxylabs', displayName: 'Oxylabs' },
     ];
+  }
+
+  /**
+   * Ottiene un provider per nome
+   */
+  getProviderByName(name: string): ProxyProviderService | null {
+    for (const [id, provider] of this.providers) {
+      if (provider.name === name) {
+        return provider;
+      }
+    }
+    return null;
   }
 }
 

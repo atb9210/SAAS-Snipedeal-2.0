@@ -53,9 +53,18 @@ export interface BrightDataConfig {
 }
 
 /**
+ * Configurazione specifica Floppydata Webunlocker
+ */
+export interface FloppydataConfig {
+  apiKey: string;
+  baseUrl: string;
+  defaultCountry: string;
+}
+
+/**
  * Union di tutte le configurazioni supportate
  */
-export type ProviderConfig = PacketstreamConfig | BrightDataConfig | Record<string, unknown>;
+export type ProviderConfig = PacketstreamConfig | BrightDataConfig | FloppydataConfig | Record<string, unknown>;
 
 /**
  * Interface che ogni provider proxy deve implementare

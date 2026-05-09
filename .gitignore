@@ -46,4 +46,15 @@ next-env.d.ts
 .vscode/
 .idea/
 
+# Build artifacts
+/dist
+/tmp
+
+# Debug dumps
+*.dump.html
+floppydata-response.html
+
+# Windsurf plans
+.windsurf/
+
 
